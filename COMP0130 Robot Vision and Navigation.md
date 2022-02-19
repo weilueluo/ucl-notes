@@ -135,3 +135,71 @@ A pseudo-random signal has special structure, they have sent with a replica and 
 - Finds location (error within 5m)
 - Correct user time
 - Velocity estimation, based on doppler shift, the satellite send a signal to the user, but the user may be moving, so when user receives the signal, the weaker it is, the further away the user travel since the satellite send the signal, so we can find out the user velocity. (error within 0.2m/s)
+
+## SLAM
+
+### Terminologies
+
+- platform: device, vehicle/oculus/etc...
+- map: environment
+
+- localization: platform uses map to localize itself
+  - GNSS: instead of using map, it uses satellite
+- mapping: building the map using the platform position
+- odometry: simultaneous localization and mapping. (error: 4m/10km in 2007)
+
+#### Mathematic Symbols
+
+- $x_k,y_k$ position
+- $\psi_k$ orientation
+- $\bold{x}_k=\{x_k,y_k,\psi_k\}^T$.
+- $u_k$ control input: wheel speed, steer angle, etc...
+  - $U$ set of control inputs
+- $v_k$ process noise
+- $w_k$ observation noise
+  - landmark is not part of observation noise as it does not directly influence when the platform goes
+- $m={m^1,m^2,\dots,m^N}$ set of $N$ landmarks, note it is superscript.
+- $m^i=[u^i,v^i]^T$ landmark state (position).
+  - landmarks have unique label and they are static
+  - landmarks can be complicated when you do not know how many are there and if there are multiple robots.
+- $Z_k=\{z^1_k,z^2_k,\dots,z^{M_k}_k\}$ platform's set of observation at time $k$.
+  - $z^j_k=h[x_k,m^{i_j},w^i_k]$ observation model for landmark $j$, this computes the observation landmark given the state of the platform, observed landmark and the observation error.
+  - inverse observation: $m^{i_j}=g[x_k,z^j_k,w^j_k]$.
+- $I_k=\{i^1_k,i^2_k,\dots,i^{M_k}_k\}$ platform's set of mapping index at time $k$.
+  - This is used to index landmark, to infer which landmark is in the current observation
+- $f(x_k,m|Z_{0:k},U_{0:k},x_0)$ probabilistic formula
+  - $x_k$ position at $k$
+  - $m$ map
+  - $Z_{0:k}$ set of observations until $k$.
+  - $U_{0:k}$ set of control input until $k$.
+  - $x_0$ initial conditions.
+
+### BeadSLAM
+
+#### Initialization
+
+- initial world state = initial position + landmark positions
+  - $s_0=[x_0,m^1,\dots,m^N]^T$ 
+- initial kalman filter
+  - $\hat{s}=[x_{0|0}]$ initial state
+  - $x_{0|0}=[0,0]$ initial position
+  - $P_{0|0}=[[0,0],[0,0]]$ initial error covariance matrix
+
+#### Timestep 1
+
+- state and covariance matrix equals to initial state and covariance matrix
+
+- create augmentation operator
+
+  - $\hat{s}_{1|1}=A_k\hat{s}^*_{1|1} + J_kz_k^j$.
+    - $A$ and $J$ are responsible for combining observation and create new estimates.
+    - $A$ dimension expanding, $J$ map observation vector to bigger space 
+    - $A_k=[I,C_k], J_k=p[0,D_k]$.
+  - $P_{1|1}=A_kP^*_{1|1}A^T_k+J_kR^j_kJ^T_k$.
+
+- In beadSlam, 
+
+  - observation model is $z^j_k=u^{i_k}-x_k+w^j_k$.
+  - inverse observation model is: $u^{i_j}=z^j_k+x_k-w^j_k$.
+
+  

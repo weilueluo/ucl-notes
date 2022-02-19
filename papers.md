@@ -61,3 +61,56 @@ All these techniques provide impressive results only in some cases.
 4. artist paint on this paper using any preferred media
 5. align artist painting with rendered image using alignment marks.
 6. 
+
+
+
+### Character Motion Animation Review
+
+> https://crad.ict.ac.cn/EN/abstract/abstract3078.shtml
+
+<img src="https://raw.githubusercontent.com/redcxx/note-images/master/2022/02/upgit_20220217_1645091715.png" alt="image-20220217095515263" style="zoom: 80%;" />
+
+- Spacetime optimization
+  - make use of character motion pattern and optimization techniques, translate physical motion constraints to mathematical constraints
+    - degree of freedom is high, computational expensive
+    - control character through adjusting loss function and constraint, but not realtime.
+    - lots of variables, high non-linearity, hard to control high level parameters such as movement speed.
+    - e.g. luxo, locomotion
+    - improvements made
+      - motion can be divided and simplified
+      - reduce dimensionality using relationship between joint motion
+      - during interaction of two characters, update one character motion at a time and optimize their constraints together, reducing number of variables.
+      - Use covariance matrix to solve large scale non-linear optimization problem.
+- kinetic constraint optimization
+  - comes from control optimization theory, uses multi-target optimization model to satisfy real-time high level parameter control task. In contrast to spacetime optimization, it optimize motion in a limited period of time, have similar problems.
+    - degree of freedom is high, motion difference between each joint is high, computational expensive
+    - In partial optimization model, it is a multi-target (character motion, style, balancing, etc...) optimization problem, nontrivial to solve.
+    - either reference to character pose / character motion
+- low dimensionality modelling
+  - reduce number of joints (or replace by spring), extract the overall motion information and estimate the final character motion.
+- limited state controller
+  - view motion as switching between multiple states, set a proportional-derivative at each joint that controls the character's transition from one state to another.
+    - computational efficient, 1000fps
+    - hard to design controller
+    - hard to generalize, need to manually adjust state machine in different environment
+    - derived from machine control theory, character moves like machine animation
+  - in early time, hyperparameters are given by experienced researchers.
+- data-driven approach
+  - physical motion equation calculation driven by character motion animation capture data, ongoing trends
+- kinetic filtering
+  - filter the right motion from existing database, and calculate the transitions between them, but often not very natural; in contrast to data-driven approach, it also tracks motion capture data in the database, increasing trends
+- statistical models
+  - use low dimensionality model to model full body motion, focus on how to move to low dimensionality, often estimates based on database
+
+<img src="https://raw.githubusercontent.com/redcxx/note-images/master/2022/02/upgit_20220217_1645091685.png" alt="image-20220217095443670" style="zoom: 67%;" />
+
+Character motion is hard because we need to consider all three aspects:
+
+- hyperparameter control
+- balancing
+- natural movement style
+
+### dynamic 3d character motion techniques in VR
+
+> http://www.lifesciencesite.com/lsj/life1003/127_19441life1003_846_853.pdf
+

@@ -230,6 +230,8 @@ Break packets into segments of 16 bits and sum them using ones complement, then 
 
 ### Reliable Delivery
 
+#### Stop-and-wait
+
 So far we have FEC in physical layer that can correct some errors, and error detection in higher layers, such as CRC in link layer and IC in network layer. But this still does not ensure reliability.
 
 We could put less bits in each frame to reduce Frame Loss Rate (FLR) or adds more FEC, but they also introduce overheads which waste a lot of capacity. Thus, detect and discard error frame is the only option, and most errors can be detected by the 32-bits CRC and IP checksum,
@@ -282,14 +284,194 @@ In this setup, notice that the sender and receiver spends most of the time waiti
 
 - 802.11n: do not send more than 4ms in one go and up to 64kb (64 packets in one go), this increases performance up to hundreds of Mbps and link utilization.
 
-For the receiver, he need to send one block ACK that tells the sender what are the packets has been received.
+For the receiver, he need to send one block ACK that tells the sender what are the packets has been received. So in summary **stop-and-wait**:
 
-- receiver needs to be able to buffer 64 packets.
+- requires receiver needs to be able to buffer 64 packets.
   - Note if one packet is dropped, the sender can only resend that packet in the next time because there is no space in the buffer to put more packets.
 - block ACK is 64-bits vector where $i$-th bit indicates whether that packet is received.
   - Now this block ACK is critical because if it is corrupted/missing, sender needs to resend all the packets after timeout.
     - We can request block ACK again after timeout.
-- Stop-and-wait is still slow for long RTT, because even if we increase the size for one go, we still need to wait for the block ACK from receiver
-  - Now let's allow the receiver to send ACK asynchronously, instead of wait for everything. (? is this true?)
-  - 
+- is still slow for long RTT, because even if we increase the size for one go, we still need to wait for the block ACK from receiver
 
+#### Go Back N (GBN)
+
+We allow the receiver to send ACK asynchronously, instead of wait for everything (? is this true?). Now we achieve high utilization.
+
+Sender use a sliding window approach and needs to know the last packet that is correctly received in order.
+
+So the receiver need to send ACK to sender with the number that the last packet was received in order. Let say we are sending packet 1,2,3,4
+
+- If only packet 2 is lost while sending, then we send ACK 1,1,1, because the the last packet that received in order is 1, and the sender will know 1 is correctly received, followed by 2 other packets, but he does not know which one is lost.
+- If only packet 2's ACK is lost while sending, then we receive ACK 1,3,4, and the receiver will know all packets have been received correctly, because when he received ACK 3, he knows ACK 2 is lost but successfully transmitted.
+- If packet 2 is lost and we received ACK 1 before sending packet 4 and we received another ACK 1, then we know that packet 4 has been successfully transmitted (?). (? what if out-of-order but none lost?)
+
+The sender will need to resend all packets after the last packet that he was acknowledge (timeout / ACK from receiver), hence go back n.
+
+- a timeout timer is started when a packet is sent, and cancelled when its ACK is received.
+- when a timer expires, go back to it and resend from there.
+
+We can improve efficiency using **fast retransmit**
+
+- duplicate ACKs are sign of packet loss / network reordering
+  - retransmit after a few duplicates (empirically, 3 is used ).
+- we can use **selective ACK (SACK)**, append to header specifying which packets it have received but it is not in order, e.g. if we send 1,2,3,4 and 2 is loss, then we send back ACK 1; ACK 1, SACK 3; and ACK 1, SACK 3,4, but this also **increase header size**.
+
+#### Utilization
+
+$$
+\begin{align*}
+U&=\frac{N \times \frac{L}{R}}{RTT}\\
+&=\frac{N\times L}{RTT\times R}
+\end{align*}
+$$
+
+when $U=1$, we have $N\times L=RTT\times R$, which means number of bits in flight is equal to the bandwidth-delay product. We cannot achieve full utilization in a network because different links have different bitrate.
+
+## TCP
+
+So now we can transport packet reliably through the best-effort network layer that handles drops, delays, reorders and corrupts packets. But many applications wants reliable transport that ensures all data reaches the receiver in order, specifically:
+
+- connection-oriented (not entirely secure)
+  - uniquely identified by sender ip & port, receiver ip & ports and protocol.
+- reliability
+  - recovery (data loss)
+  - duplicate
+  - order
+  - integrity (corruption)
+- transfer as fast as possible
+  - avoid send faster than receive
+  - avoid congesting network
+
+Application listen to port, and os send the received data to corresponding port. Well known ports include TCP-HTTP:80, TCP-SMTP:25, TCP-SSH:25, UDP:53, etc... and each port can only be owned by one application instance.
+
+Problems:
+
+- how sender and receiver agrees?
+- data from old connection received?
+- prevent host impersonation.
+
+### At-least-once Delivery
+
+We have seen that we can attach unique nonce (sequence number) to packet and wait for its ACK to ensure the packet is actually delivered, there are a number of problems unaddressed:
+
+#### Number of retransmissions
+
+Set by sender.
+
+#### Duration of Timeout
+
+Too short leads to frequent retransmissions and too long leads to delay in detecting loss. We cannot set a fixed value because this apply assumption about the underlying link layer (congestion / route changes). We can tune the timeout using RTT from previous packets.
+
+- Adapt over time, using **Exponentially Weighted Moving Average (EWMA)**
+  - $RTT_i=\alpha RTT_{i-1} + (1-\alpha) m_i$ where $m$ is the measurement for current delivery. We choose $\alpha$ as $0.9$ (empirically).
+  - Original TCP: $\text{timeout}_i=\beta\times RTT_i$ where $\beta=2$.
+
+#### Size of Nonce Space
+
+- If we use random number then receiver has to store all of them in order to verify whether we have seen the current packet before (we need to drop duplicate!)
+  - We **use cumulative sequence number**, increase monotonically, receiver can drop packets that has been received in order. Although this reduce the problem, we still need to set the sequence space for the number, we come back to this later
+
+#### Preserve data ordering
+
+- transport layer **segment** the data and **reassemble** at the receiver side, **mark each packet by its range of bytes in original data**, pass to receiver when all bytes before some point has been received.
+
+#### End-to-end integrity
+
+- Use **internet checksum over**:
+  - **payload** protect against link layer reliability.
+  - **transport protocol header** protect header sequence number and payload mismatch.
+  - **layer-3 source and destination** protect against delivery to wrong destination.
+- cannot protect against software bugs / router memory corruption (?), etc..
+- drop when checksum fails.
+
+### Performance
+
+Do not use stop-and-wait because it is too slow --- we need to wait for ACK every time we send a packet. For example, if we have 70ms RTT, then 1500-byte packets can only delivery up to 171 kbps.
+
+Instead we pipeline transmission by using sliding window: Go-back-n, fast retransmit, SACKs.
+
+#### Sliding Window Size
+
+From utilization point of view, it should be at least equals to the bandwidth-delay product so that we can achieve maximum utilization, but this is not always optimal, because:
+
+- Can receiver sustain such rate? (flow control) 
+- What if the bottleneck link is shared? (the bandwidth-delay product will be smaller this case) Can the network cope with such rate? (avoid congestion)
+
+### Header
+
+<img src="https://raw.githubusercontent.com/redcxx/note-images/master/2022/02/upgit_20220218_1645221579.png" alt="image-20220218215938339" style="zoom: 67%;" />
+
+- Min 20 bytes
+- Checksum includes tcp segment (payload) + pseudo header (sender and receiver address, protocol and tcp segment length).
+- 16 bits port (0-65535)
+- bidirectional (carry sequence number for both data and ACKs)
+- 32 bits sequence number
+  - as packet id and reassembly
+  - enough to avoid wrapping issue (so far)
+- window: number of bytes advertiser willing to accept in addition to bytes ACKed in the packet. (avoid overwhelming the receiver)
+- Flags
+  - SYN, exchanged to establish connections
+  - RST, reset, forget about the last connection
+  - FIN, finish, close connection
+
+### Idea
+
+- Start TCP connections between two hosts
+- Avoid mixing packets between connections
+- Avoid confusing connection attempts
+- Prevent impersonation
+
+
+
+- connection cannot starts with constant sequence number, because it mixes data between old and new connections (? what if it is just loss packets at the beginning)
+- need to use random starting sequence number and explicitly ACK with the received sequence number; if unrecognized sequence number received, response with RST reset.
+
+
+
+- 3-way handshake
+  - send own sequence number to each other and confirm we received the corresponding ACK
+  - hard to impersonate because the attacker does not know the sequence number send, so he cannot send the corresponding ACK
+- each side independently decide when to close, need to agree last data are sent and connection is ended
+  - to avoid mixing new and old connection data, when connection tear down, one endpoint enters TIME_WAIT for a long enough time (2x max segment life time), disallow new connections.
+
+<img src="https://raw.githubusercontent.com/redcxx/note-images/master/2022/02/upgit_20220219_1645272680.png" alt="image-20220219121119496" style="zoom: 80%;" />
+
+### Data Transmission
+
+- Sender use a sliding window that does not exceed send / receive window size and the network estimated capacity with timeout
+- receiver send cumulative ACKs
+  - ACK number is the highest contiguous byte number so far + 1.
+  - there are also delayed ACKs that batched into one for every pair (max delay 200ms)
+
+#### Utilization
+
+- Sender just send all packets advertised by the receiver and retransmit after timeout, it is a pure go-back-n.
+  - window-sized bursts of packets sent into network at max bit rate
+
+<img src="https://raw.githubusercontent.com/redcxx/note-images/master/2022/02/upgit_20220219_1645280622.png" alt="image-20220219142340683" style="zoom:50%;" />
+
+- **transmission rate** burst leads to congestion collapse.
+- **transmission timeout** due to larger RTT due to queuing at intermediate link.
+  - leads to timeout & retransmission.
+
+We was using Exponentially Weighted Moving Average to estimate RTT, and timeout = 2 * RTT. But this clearly does not work because when we transmit in burst, increase in timeout will cause this timeout to happen too early. So Jacobson proposed to use **Retransmission Timeout (RTO)**:
+
+- estimate $v_i=\text{mean deviation}=|m_i-RTT_i|$ to approximate RTT variance
+- $RTO_i=RTT_i+4v_i$.
+
+Next we solve what is the max rate to send to achieve max utilization?
+
+- what is the initial rate
+- how to adjust the rate
+
+We starts with 1 then increase by packet size (double) until receiver advertised window size (slow start). Takes $\log_2(\text{receiver window size} / \text{packet size})$ RTTs to reach receiver window size. Now if we use this slow start and mean+variance RTT estimator, we have:
+
+<img src="https://raw.githubusercontent.com/redcxx/note-images/master/2022/02/upgit_20220219_1645285080.png" alt="image-20220219153759790" style="zoom: 67%;" />
+
+which is pretty close to the optimal bandwidth compared to the original TCP, and we have almost no retransmission at all (we did not overload the network).
+
+#### Congestion Control
+
+Below shows congestion collapse
+
+<img src="https://raw.githubusercontent.com/redcxx/note-images/master/2022/02/upgit_20220219_1645286805.png" alt="image-20220219160644082" style="zoom:50%;" />
