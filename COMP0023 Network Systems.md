@@ -1,4 +1,4 @@
-# Network Systems COMP0023
+# 	Network Systems COMP0023
 
 ### What We Will Learn
 
@@ -381,7 +381,7 @@ Too short leads to frequent retransmissions and too long leads to delay in detec
   - **payload** protect against link layer reliability.
   - **transport protocol header** protect header sequence number and payload mismatch.
   - **layer-3 source and destination** protect against delivery to wrong destination.
-- cannot protect against software bugs / router memory corruption (?), etc..
+- cannot protect against software bugs / router memory corruption, etc..
 - drop when checksum fails.
 
 ### Performance
@@ -475,3 +475,349 @@ which is pretty close to the optimal bandwidth compared to the original TCP, and
 Below shows congestion collapse
 
 <img src="https://raw.githubusercontent.com/redcxx/note-images/master/2022/02/upgit_20220219_1645286805.png" alt="image-20220219160644082" style="zoom:50%;" />
+
+To avoid congestion collapse the only way is to slow down.
+
+- Absence of ACK implicitly indicates that the network is congested.
+  - It can also be corrupted, but most of the absence is due to network congestion.
+  - ACKs return: window ok.
+    - We increase the window size by packet size: $\text{cwnd}=\text{cwnd}+(\text{pktSize}\times \text{pktSize}) / \text{cwnd}$. (increase 1 each RTT)
+  - ACKs missing: window too big.
+    - We decrease the window size, but practically, when we have missing ACKs, the network maybe just not working at all, so instead of decreasing it by 2, we set the slow start threshold (ssthresh) to current window size / 2 and slow start from 0 up to that value.
+
+This is called **Additive Increase, Multiplicative Decrease (AIMD)**.
+
+<img src="https://raw.githubusercontent.com/redcxx/note-images/master/2022/02/upgit_20220221_1645465683.png" alt="image-20220221174802256" style="zoom: 67%;" />
+
+We can visualize the efficiency and fairness between two hosts using Chiu-Jain Phase Plot:
+
+<img src="https://raw.githubusercontent.com/redcxx/note-images/master/2022/02/upgit_20220221_1645465924.png" alt="image-20220221175203992" style="zoom:67%;" />
+
+For AIMD we have:
+
+<img src="https://raw.githubusercontent.com/redcxx/note-images/master/2022/02/upgit_20220221_1645466040.png" alt="image-20220221175400759" style="zoom:50%;" />
+
+#### Performance Analysis (++)
+
+- mean window size = $3W/4$.
+- mean throughput = mean window size * bits per RTT / RTT = $3BW/4RTT$.
+- packet per cycle = packet/time * total time = $(3W/4)/RTT \times (W RTT / 2) = \frac{3W^2}{8}$.
+- we lost one packet per cycle, loss rate $p=\frac{8}{3W^2}$.
+- so when we lost one packet every $W=\sqrt{\frac{8}{3p}}$ window size.
+- (++last page)
+
+## L2 Forwarding
+
+How do hosts delivery packets?
+
+- Forward the packet to next (forwarding).
+- Host bootstrapping (ARP, DHCP).
+- Best path selection (routing).
+
+### Data Link Layer
+
+Enable packet delivery within the same Local Area Network (LAN)
+
+- Abstract addresses.
+- Multiple physical links.
+- Access to shared media.
+- Some form of reliability.
+
+Uses **Media Access Control (MAC)** such as CSMA/CD.
+
+- Identifier in the link layer (within the LAN).
+- Assigned by **Network Interface Card (NIC)** vendors.
+- **48 bits** (6 bytes, first 3 bytes identify the vendor, globally unique).
+- burned in NIC ROM, sometimes software settable, flat address space (unstructured).
+
+The address to passed to higher level if:
+
+- It is **broadcast address** $\text{ff:ff:ff:ff:ff:ff}$.
+- It is in **promiscuous mode** (catches all frames and pass to higher level).
+- It is NIC address.
+
+#### Repeaters
+
+**Repeaters** rebroadcast all bits received in the physical-layer frames.
+
+- Used to join cables and amplify signals to avoid weaken over time.
+- **Hubs** are repeaters that can join multiples cables (but may not amplify signals).
+
+Problems:
+
+- Does not interpret signals so cannot interconnect different formats/rates.
+- Does not avoid collision. (use MAC to resolve this)
+- Max node/distance are as on single-cable LAN (e.g. <2500m in commercial ethernet).
+- Hosts connected via a cable will share its maximum speed (limit throughput).
+
+#### Switches
+
+**Switches** forward link-layer frames based on link-layer header.
+
+- Connects different collision domains (each port define different domain).
+- Extract link address and forward selectively to their collision domain.
+- More and more hosts are connecting to switches directly.
+
+Advantages:
+
+- Full duplex (send and receive bidirectional).
+- No collision -> no carrier sense collision detection, change in medium access control but same framing.
+- Change in MAC but same framing. (change l2 header but same framing)
+- Can combine different technologies since it can re-encapsulate packets.
+- Avoid unnecessary load on connected LAN segments (when it builds the spanning tree, unlike hub)
+- Improves privacy as each switch can only snoop at their own traffic.
+
+Most LANs are designed like this today.
+
+Disadvantages:
+
+- It has higher cost and introduce delay
+  - need to parse and decide what to do. (**store-and-forward delay**)
+    - Can be ameliorated 改善 by **cut-through switching**
+      Start parsing when we have received the header instead of waiting for the whole packet.
+
+
+
+#### Routers
+
+- **Routers** forward IP datagrams based on network-layer header.
+
+
+### Forwarding Table
+
+Switches maintain a forwarding table that maps an destination address to a outgoing port, we would like to construct such table automatically without intervention from administrator via a self-learning algorithms.
+
+Let's start with an simple idea: starts a empty table, when we receive any request sending from $A$ to $B$ from a port $P$:
+
+- We add $A$ and $P$ in the forwarding table because we know port $P$ leads to address $A$; also a time-to-live since the network may change.
+- If $B$ is in the forwarding table and time-to-live is valid send it to that address.
+- else send $B$ to all other outgoing ports (**flooding**).
+
+The problem with this approach is that it can creates loops in the network, because if we have two switches, S1 and S2, interconnected; S1 received something and flood to switch S2 and S2 also does not know the location, it will flood back to S1, this process is fast and grows exponentially so it can consume a lots of bandwidth and leads to catastrophic congestion. (**broadcast storm**, one of the goal of protocol is to avoid this).
+
+#### Spanning Tree Protocol (STP)
+
+In this protocol, it defines how can switches build a spanning tree (subgraph that connects all vertices with no loop) in an all connected LAN; with automatically setup and failure repair by exchanging **control-plane** messages.
+
+1. Find root.
+2. Compute edges (min hops to root).
+3. Support forwarding between any pair of LANs.
+
+**Computing Logical Topology**:
+
+1. Root ID is pre-assigned;
+
+2. Nodes just agree that the min id will be the root and send message to each other.
+
+   - broadcast at the beginning and when received a better message, change own configuration message and broadcast again.
+     - Better message if:
+       - smaller root id; 
+       - then shorter distance to root;
+       - then lower sender id;
+       - then lower port number.
+   - configuration message: **(root_id, distance_to_root, sent_from_id)**.
+
+3. Decide which port to block to form the spanning tree.
+
+   - Each node send configuration message to root, keep only the **designated port** (port that has shortest path to LAN or cable to the root, i.e. the port received the best configuration message).
+
+     - So now port will have a status:
+       - **Root (R)** best external message received.
+       - **Designated (D) (initial)** internal message is better than best message received in this port.
+       - **Blocked (B)** internal message is worse than best message received on this port.
+
+     <img src="https://raw.githubusercontent.com/redcxx/note-images/master/2022/02/upgit_20220223_1645613196.png" alt="image-20220223104634734" style="zoom:50%;" />
+
+   - Note the node does not stop and assign port status after it receive all configuration messages, instead it continuously update its port status based on configuration received and internal configuration, therefore configuration message is never blocked, so that we may update a port from blocked to designated.
+
+Now we have our root decided, but topology (network) may change; so the root switch sends periodically (2 seconds recommended in 802.1d) with parameter *hello time*, and other switch send on all designated ports when receive roots' message.
+
+All configuration messages are stored in a table with age field (time-to-live, there is a threshold max age, which is 20 seconds in 802.1d), discard when expired or newer received.
+
+If the ethernet fails, the node would stop hearing message from one of the port, so set that port back to initial state (designated), if that port is root port, we update to a new root port and update own message.
+
+If the ethernet backup again, LANs may ends up with loops, therefore STP adds a new port status called **pre-forwarding**, when the port is either:
+
+- changing from blocked to designated.
+- newly connected.
+- on freshly-powered switch.
+
+When it is in that state, it send configuration message and transition to blocked and root states as if it were designated, but does not forward data to avoid loops; until the port is assigned a new status after appropriate configuration message is received. Note that a port may ended up in pre-forwarding state forever.
+
+- e.g. this can happen to root's port because it may not receive a better / worse configuration message because its internal message is already the best configuration message.
+  - So we set a forwarding delay that is enough for the entire spanning tree to reform (in in practice: twice the maximum transit time across the extended LAN.), (30 seconds in 802.1d). After it timeout, we set port to be designated.
+
+### Internetwork Protocol
+
+Now what about the internet? We have STP that handles small group of nodes well, can we scale it for internet? Of-course not, if we use STP in the internet:
+
+- All hosts hear all traffic during flooding, **does not scale well**.
+- Even if we just track one host per LANs, that also means each switch needs to learn where every host is, and we will **need to keep lots of states**, and **packets still floods** until switches learns them.
+
+We need to add another hierarchy. Lets connect hosts together to form **Local-Area Networks (LANs)** through ethernet, WIFI, etc... Then we add router to each LAN, connecting them to form a **Wide-Area Network (WAN)**, this is the extra layer that transfer packets between LANs, and we need a **internetwork protocol** for them.
+
+Recall within the LAN we have flat MAC addresses, and new in WAN we will have structured IP address, which means address in the same LAN will have address close to each other, IPv4 is a 32-bits number, commonly represented as 4 number (dotted-quad notation, a.b.c.d).
+
+1. Originally 8-bits network identifier, 24-bits for hosts.
+
+   - assumed 256 networks, not enough
+2. Next we try classful addressing, class A, B, C
+
+   1. 0, 7-bits for network, 24-bits for hosts (large block taken by IBM, MIT, HP...)
+   2. 10, 14-bits for network 16-bits for hosts (medium size organizations, huge demands)
+   3. 110, 21-bits for network, 8-bits for hosts (small organizations, too small)
+3. Today we have **Classless Interdomain Routing (CIDR)**
+
+   - flexible boundary between network and host address (separate by IP mask), result in high address assignment efficiency. Written as network/mask length: 12.4.0.0/15.
+   - They are allocated continuously and hierarchically, forwarding based on prefixes.
+
+### Tying the Link & Network Layer
+
+- What IP address should the host use?
+- How to contact the local DNS server?
+- How to send packets to destinations?
+  - Local and remote
+
+
+
+- **Dynamic Host Configuration Protocol (DHCP)**
+  - The end hosts learns **IP address**, **IP mask**, **local DNS server** and **gateway to internet** locally.
+- **Address Resolution Protocol (ARP)**
+  - Enable hosts reach local destination by providing mapping between IP and MAC address.
+
+The key ideas:
+
+- broadcast when in doubt: send query to all hosts in the LAN.
+- cache information for some time: reduce overhead and allow communication
+- soft state: eventually forgets, TTL, refresh/discard, provide robustness to unpredictable change.
+  - Client may not release their IP address due to crashes or buggy software.
+    - Short lease time: return inactive addresses quickly; long lease time: avoid overhead of frequent renewal.
+
+#### DHCP
+
+1. At the beginning, client knows nothing about source and destination IP / MAC, so he broadcast a DHCP discovery message: source: 0.0.0.0; destination MAC: ff:ff:ff:ff:ff:ff and destination IP: 255.255.255.255;
+2. Then either a **DHCP server** or **relay agent** can reply with a DHCP offer message:
+   - Proposed IP address, netmask, gateway, DNS server and lease time
+   - A relay agent forward configuration message to a remote DHCP server and their replies to client.
+3. Client then accepts one of the offers by sending DHCP request.
+4. Server confirms with DHCP ACK.
+
+All four messages are broadcasted:
+
+- Discover broadcast: client does not know DHCP server's identity.
+- Offer broadcast: client doesn't have an IP address yet.
+- Request broadcast: so other servers can see.
+- ACK broadcast: client still doesn't have an IP address.
+
+#### ARP
+
+Now the host has information about its own, and it can send packet directly if it is local, but it does not know destination MAC address yet. To build such mapping (table containing IP and MAC pairs) it uses **Address Resolution Protocol (ARP)**, which basically is:
+
+1. Broadcast who has this IP address X.
+2. That guy with IP X response with IP address X is at link layer address Y.
+3. Host cache this information in the ARP table.
+
+Now what if after getting the address from DNS server and host find that the destination is not local (checked using netmask), then it will send the packet to a router (default gateway for the LAN, known from DHCP).
+
+Note that this is not secure because any node can say whatever they want and send a ARP reply, which can result in **impersonation** and **man-in-the-middle attack**. Also note that the attacker does not need to win the race with real server, it can just poison host's cache due to host's optimization.
+
+#### Sending Packet From Host A to B
+
+1. Finds IP from local DNS server
+2. Check if host is local using netmask
+   1. yes: just send it directly to B
+   2. no: 
+      1. encapsulate IP packet in link layer head and send it to router
+      2. router consult forwarding table and send it.
+
+## Internet Protocol (IP)
+
+Goal:
+
+- connect heterogeneous networks together
+  - unifies architectures of network of networks
+  - run over ip = run over any network
+  - support ip = run any application
+
+### Header
+
+Things to consider:
+
+- max size of the packet?
+  - many different max frame size in link technologies and we do not want to design for the smallest frame size because we do not know what is the smallest one in our route. So we use **IP fragmentation** that splits the packet.
+    - but after we send the packet fragment when we encounter a link with smaller maximum transfer unit (MTU), we need to put it back together; since packets may take a different route, only the end host is guaranteed to receive all packets. 
+- what should the receiver do?
+  - To reply, we need **source ip address**, packet can provide a common way to retrieve it, but include it in every packet can be redundancy, it can just be send once in the start of the conversion between two hosts. (but we add it anyway).
+  - Many protocol on top of IP, need to tell receiver what protocol we are using so that they can parse it, so we need to include a **next protocol id** in the header: TCP (6), UDP (17), tunneling: GRE and control: ICMP.
+- what happen if packet gets corrupted?
+  - some errors escapes CRC detection, we can add more error detection but only the application knows how much overhead is appropriate; but a checksum is still useful for protecting misrouted packets (or corrupted TTL), so we add a simple checksum for ip header only; we should not over-engineer low layers so it does not cover payload.
+- what if router is confused?
+  - router can be confused when there is a loop in the route:
+    <img src="https://raw.githubusercontent.com/redcxx/note-images/master/2022/03/upgit_20220312_1647099068.png" alt="image-20220312153107266" style="zoom: 50%;" />
+  - The solution is to add a counter (time-to-live TTL) in the packet header, and decrease by one at each counter, drop when reaches zero; and send time-exceeded message back to source.
+- order/importance of different packets?
+  - packets will need to queue when too many packets arrive at a router, it is easy to add a priority in the header but it is hard to prioritize them, this is a business/money thing, and hard to decide who to pay when packets traverse through multiple network.
+
+At the end, we have:
+
+<img src="https://raw.githubusercontent.com/redcxx/note-images/master/2022/03/upgit_20220312_1647100301.png" alt="image-20220312155141907" style="zoom:67%;" />
+
+### Forwarding at the Network Layer
+
+Routers are more powerful than switches in the sense that they can use IP addresses to foward packets across the internet. It:
+
+- consists of a set of network interfaces where packets will arrive and depart;
+- communicates with other routers to compute WAN path and forward packets to corresponding output interface.
+- store information on the destination host, does not store per-host information --- scales well.
+  - relies on structure of IP address.
+- forward packets independently --- failover if paths fail 故障转移;
+
+Providers tell internet what addresses are accepted, and when a packet with a particular address is received, the provider with most specific address is chosen to send the received packets. This means that if you want to do e.g. load balancing using multiple providers, all your providers must tells the same specificity of ip address range, otherwise all of them will be send to the provider with most specific address.
+
+- host: endpoints running applications, at least one interface
+- router: intermediate system with multiple interface
+- subnet: point-to-point (cable between two routers) or shared LAN where hosts and routers are connected wit their interface.
+
+#### Computing the Table
+
+Router build routing table with three entries: 
+
+- **destination** IP prefix only, subnet's address.
+- **outgoing interface** where to forward the packet.
+- **metric** cost to reach destination, depends on interfaces' metrics (set by net admins)
+
+When received a packet, router will find the longest prefix match, if no entry found, the packet is dropped $\rightarrow$ so how do we populate the packet?
+
+(?) Keeps a routing table; Applies LPM to incoming packets --- What is LPM
+
+- Initialize table for directly connected subnet; cost are minimal as they are connected.
+- Routing protocols add information on remote destinations
+
+In the routing protocol, it needs to define:
+
+- Information and message exchanged;
+- and method to determine the next-hop
+
+In addition, we have the following requirements for internet:
+
+- Good performance, possibly both time and space
+- No central knowledge needed (e.g. graph algorithm such as Dijkstra cannot be used)
+  - A distributed algorithm is needed for this shortest path problem
+- Automated path computation
+- dealing with failures: coherent with topology, new route when old is disrupted
+  - Need fast reconvergence to corrected path
+  - Potential loops that amplify traffic and need to wait for TTL expire, but typically too late.
+  - Possibly temporarily disconnections.
+
+
+
+
+
+(?x2) link failure
+
+## Miscellanies
+
+- traceroute: give destination, show hops, router ip
+- whois: show organization given ip
+- nslookup: show ip given name
+- ipconfig: show network interface

@@ -1,6 +1,12 @@
 # COMP0160 Perception & Interface
 
-### Perceptual Process
+## Lectures
+
+### Lecture 1
+
+Perception refers to how we experience the world through our five senses. It helps us to gain understanding and interpretation of our environment, and help us to plan our action in response to this sensory information. It includes three stages: **organize**, **identification** and **interpretation**.
+
+#### Perceptual Process
 
 - Stimulus
   - Environmental / Attended / Receptor
@@ -18,7 +24,7 @@ The process can be studied through physiological approach and psychophysical app
 - Physiological: relation of the physiological process and the resultant action or the relation between stimulus and the physiological process. (nervous system / chemical process)
 - Psychophysical: relation of the stimulus, physics, light / sound waves and resultant action. (experiments)
 
-### Basics of Psychophysics
+#### Basics of Psychophysics
 
 The main idea is to change an external property of the stimulus (visual, taste, touch, auditory) and measure the behavioral parameter (accuracy, reaction time, sensory threshold). We can use an objective scale of measurement because the result is quantitative.
 
@@ -39,9 +45,9 @@ To find the threshold:
 
 The graph plotted external parameter against participant result is called **psychometric function**. From the graph we can figure out the threshold. But there are always **noise** in experiments.  Noise can come from **neural activity**, **stimulus (physical)**, and **attention**.
 
-To avoid this, we can use adaptive staircase techniques, where we presents lower the threshold if participant cannot detect and raise if can be detected (we starts with big steps and slowly decrease the steps, to get a more accurate response), in this case, we spend more time around the threshold and can be good for fitting psychometric function, but SDT can do better:
+To avoid this, we can use **adaptive staircase** techniques, where we presents lower the threshold if participant cannot detect and raise if can be detected (we starts with big steps and slowly decrease the steps, to get a more accurate response), in this case, we spend more time around the threshold and can be good for fitting psychometric function, but SDT can do better:
 
-### Signal Detection Theory (SDT)
+#### Signal Detection Theory (SDT)
 
 We can use SDT to analysis the participant, by identifying hit/false alarm/miss/correct rejection we can figure out whether the participant is more willing to say yes/no (low/high criterion), and we aimed to find out although the participants have different criteria for responding to the stimuli, but is their underlying sensitivity to the threshold the same?
 
@@ -63,7 +69,46 @@ d'&=\text{hit rate} - \text{false alarm rate}\\
 $$
 where $S$ is signal and $N$ is noise. Usually, 0 is chance level performance, 1 is moderate and 4.65 is optimal (hit rate 0.99 and false alarm 0.1). Now if we plot the ROC curve, we can further explore the differences between sensitivity and criterion.
 
+#### Physiological Process
 
+- Occipital lobe for receiving visual information 
+- Temporal lobe for receiving auditory information 
+- Parietal lobe for receiving tactile information 
+- Frontal lobe for receiving information from all the senses and is involved In the coordination of information received through multiple senses.
+
+<img src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/89/Cerebrum_lobes.png/1920px-Cerebrum_lobes.png" alt="img" style="zoom: 25%;" />
+
+Neurons consists of a **cell body** appended with **axon** and **dendrites**; dendrites are inputs and can have thousands of them; and axon is the output and has only one; neurons communicate via transduction or electric flow. Together they form sense receptors that handles different environmental information from our five senses.
+
+### Lecture 3
+
+#### Structure of Ear
+
+1. Outer ear
+   1. **pinna 表面** act as a funnel, filter and help localisation of sound.
+   2. **auditory canal 耳道** boost sensitivity in the range 1000hz-5000hz.
+2. Middle ear
+   1. **eardrum 鼓膜** consists of three bones, change pressure variation
+   2. **eustachian tube 咽鼓管** equalize pressure between middle ear and oral canvity
+3. Inner ear
+   1. **cochlea 耳蜗** bony structure filled with fluid, transform pressure variation to neural impluses; one of the bones (stapes) from eardrum attach to oval window of cochlea.
+      - different parts have different **stiffness 刚度** that react to different frequencies.
+      - the conversion from wave to electrical signals is done via **corti**, it has hair on its surface that depolarize when it is vibrated; causing the neurontransmitter to release; and leads to potentials transferred to higher auditory area.
+        - cochlear $\rightarrow$ Auditory Brainstem $\rightarrow$ Auditory Forebrain
+
+#### Sound Perception
+
+- loudness: amplitude.
+- sensitivity range: 20-20k
+- pitch: cycle frequency
+- tone height: increasing pitch and fundamental frequency at the same time.
+- fundamental frequency: the lowest frequency of N periodic waveform.
+
+### Localization
+
+- Visual: objects are imaged on different places of the retina
+- Sound: vibrations are spread across the cochlea
+  - folds
 
 
 
