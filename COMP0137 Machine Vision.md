@@ -1,6 +1,163 @@
-## Probability Distributions
+# Machine Vision
 
-https://www.youtube.com/watch?v=KiftWz544_8
+The big goal of machine vision is to:
+
+- Recognition
+  - Character / Face / Object / Action
+- Reconstruction
+  - 2D image $\rightarrow$ 3D model
+- Tracking
+  - Follow object in video
+- Navigation
+- Segmentation
+- Enhancement Synthesis
+- ...
+
+Applications includes:
+
+- Autonomous Vehicles
+- Security
+- Text Recognition
+- Augmented Reality
+- Image Retrieval
+- Medical Image Analysis
+- Model Building
+- ...
+
+History:
+
+- 1970s: low level vision with binary images
+- 1980s:  close with animal vision
+- 1990s: estimation of camera pose and scene geometry
+- 2000s: close with ML, CNN...
+
+## Introduction
+
+Machine Vision is hard because of (1) its dimensionality, all combinations of pixel values is a huge number (though we will never see most of them); (2) It is a inverse problem, i.e. the mapping from scene to image is many-to-one, it is not unique; (3) real-time is hard because video contains many data. Luckily, we know about how graphics works, have prior knowledge that expects what we will see in the image (help non-uniqueness), and there are huge data available.
+
+## Overview
+
+1. Probability
+
+   - Joint probability
+
+   - Conditional probability
+
+   - Independence
+
+   - Bayes’ rule
+
+   - Common probability distributions
+
+   - How to fit distributions to data
+
+   - The multivariate normal
+
+2. ML for vision: infer world from data
+
+   - Model for regression (Discriminative)
+
+     - Linear & non-linear regression
+     - Gaussian process regression
+     - The relevance vector machine
+
+     - Models for classification (Discriminative)
+       - Logistic regression
+       - Gaussian process classification
+       - Boosting and classification trees
+
+   - Model complex PDFs (Generative)
+     - EM algorithm
+     - Mixture models
+     - t-distributions
+     - Factor Analysis
+
+3. Connecting Models
+
+   - Conditional Independence
+
+   - Graphical Models
+
+   - Inference on tree-structured models
+
+   - Pictorial Structures
+
+   - Undirected models
+
+   - Markov random fields
+
+   - Graph cuts
+
+4. Models of Shape
+
+   - Point distribution model
+
+   - Active Shape Models
+
+   - Active appearance models
+
+5. Tracking
+
+   - The Kalman Filter
+
+   - Extensions of the Kalman Filter
+
+   - Particle Filtering
+
+6. Face Recognition
+
+   - Subspace models for recognition
+
+   - Within- and between- individual variance
+
+   - Recognition across pose
+
+7. Geometry of a Single Camera
+
+   - Image transformations
+   - How do 3d points project to pixels
+   - Special cases of imaging
+
+8. Geometry of multiple cameras
+
+   - Stereo vision
+   - Epipolar geometry
+   - Finding and matching distinctive keypoints 
+   - Shape from silhouette
+
+## Probability
+
+- **Random Variable** Output of a function that you do not know the input, the function can be discrete or continuous.
+
+- **Probability** Probability of a output from a random variable.
+
+- **Joint Probability** Probability of two random variable outputs happen together.
+  $$
+  \begin{split}
+  Pr(x|y)&=\frac{Pr(x,y)}{Pr(y)}
+  \end{split}
+  $$
+
+- **Bayes Rule**
+  $$
+  \begin{split}
+  Pr(y|x)=\frac{Pr(x|y)Pr(y)}{Pr(x)}
+  \end{split}
+  $$
+  $Pr(y)$ can be seem as remove the denominator in $Pr(x|y)$ to get $Pr(x,y)$ and add $Pr(x)$ to get $Pr(y|x)$.
+
+- **Expectation**
+  $$
+  E[f(x)]=\int{f(x)Pr(x)}\; dx
+  $$
+
+  - Calculating the expectation requires us to know probability of each input.
+
+  > TODO: what is moment
+
+### Probability Distributions
+
+<img src="https://raw.githubusercontent.com/redcxx/note-images/master/2022/04/upgit_20220423_1650668873.png" alt="image-20220423000750199" style="zoom: 80%;" />
 
 ### Bernoulli
 
