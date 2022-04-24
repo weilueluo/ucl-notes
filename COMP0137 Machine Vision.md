@@ -1,5 +1,7 @@
 # Machine Vision
 
+> Book: http://www.computervisionmodels.com/
+
 The big goal of machine vision is to:
 
 - Recognition
@@ -157,6 +159,8 @@ Machine Vision is hard because of (1) its dimensionality, all combinations of pi
 
 ### Probability Distributions
 
+> The explicit formula is not discussed, they are created by mathematician for us to model probabilistic distribution to have some mathematically convenient properties.
+
 <img src="https://raw.githubusercontent.com/redcxx/note-images/master/2022/04/upgit_20220423_1650668873.png" alt="image-20220423000750199" style="zoom: 80%;" />
 
 ### Bernoulli
@@ -182,65 +186,100 @@ Or in one line:
 $$
 Pr(x)=\lambda^x(1-\lambda)^{1-x}
 $$
-The probability will sum to one of-course.
+- A probability distribution for two discrete values.
 
 ### Beta
 
 > univariant, continuous, multivalues
 
-If our $\lambda$, parameter of the Bernoulli distribution is also following a distribution, then by observing the distribution, we can tell the probability of $1$ and $0$ because they are controlled by the $\lambda$. In the beta distribution, the distribution of $\lambda$ is controlled by $\alpha$ and $\beta$.
-
-![image-20211011141530217](COMP0137 Machine Vision.assets/image-20211011141530217.png)
-
-<img src="COMP0137 Machine Vision.assets/image-20211011141659413.png" alt="image-20211011141659413" style="zoom:50%;" />
-
-Note that the ratio of $\alpha$ and $\beta$ determine where the peak is, and the magnitude of $\alpha$ and $\beta$ determine how steep the peak is. If it is $(1, 1)$, the distribution will be flat, but if we have $(10, 10)$, then we will get a peak at the middle. In short we write:
 $$
 Pr(\lambda)=Beta_\lambda[\alpha, \beta]
 $$
 
+Beta distribution is used to represent a distribution of a value ranged between 0 and 1, called $\lambda$, controlled by $\alpha$ and $\beta$.
+
+- The ratio of $\alpha$ and $\beta$ determine where the peak/expectation is.
+- As the magnitude of $\alpha$ and $\beta$ increases, the steepness/concentration of the peak/expectation increase.
+- This can be seen as an input for Bernoulli distribution.
+- Expectation can be calculated as $\frac{\alpha}{\alpha+\beta}$.
+
+![image-20220423111137986](https://raw.githubusercontent.com/redcxx/note-images/master/2022/04/upgit_20220423_1650708699.png)
+
+> TODO: usage
+
 ### Categorical
 
-But what if we want to model distribution of a number of values, not just $1$ and $0$? Then we will extend the above to include multiple $\lambda$, store them in a vector denoted as $\boldsymbol{\lambda}$ where each of $\lambda_i\in \boldsymbol\lambda$ represents the probability of $x_i$. Then this is called a categorical distribution. of-course, these $\lambda_i$ has to sum to 1 so that the overall probability is 1.
+- multi-values version of Bernoulli distribution.
+  - Each value $x_i$ follows $Pr(x=x_i)=\lambda_i$ and $Pr(x\neq x_i)=1-\lambda_i$.
 
 <img src="COMP0137 Machine Vision.assets/image-20211011143108061.png" alt="image-20211011143108061" style="zoom: 33%;" />
 
 ### Dirichlet
 
-Now if $\boldsymbol\lambda$  (not individual $\lambda_i$)  follows a distribution, then we have a dirichlet distribution, controlled by parameter $\alpha_i$:
+- Continuous version of Categorical distribution.
+- Multi-values version of Beta distribution.
+  - Relative ratio of $a_{i\in K}$ determine the peak/expectation value.
+  - Absolute value of $a_{i\in K}$ determine the height/concentration of the peak.
 
-<img src="COMP0137 Machine Vision.assets/image-20211011145421211.png" alt="image-20211011145421211" style="zoom: 50%;" />
-
-If we assume we have 3 $\lambda$s, then from the figure above, we have see that the color will be flat if we have all of them the same, and if they are different, that tells us that some combinations of $\lambda$ are more probable.
+![image-20220423121156575](https://raw.githubusercontent.com/redcxx/note-images/master/2022/04/upgit_20220423_1650712316.png)
 
 ### Univariate Normal
 
 <img src="COMP0137 Machine Vision.assets/image-20211011154219447.png" alt="image-20211011154219447" style="zoom: 50%;" />
 
-$\mu$ describe the position of the distribution along the $x$ axis, $\sigma$ describe the variance of the distribution.
+- $\mu$ describe the position of the peak.
+- $\sigma$ describe the variance/width of the distribution.
 
 ### Normal Inverse Gamma
 
-We can model the distribution of the $\mu$ and $\sigma$ using 4 parameters: 
+We model the distribution of the $\mu$ and $\sigma$ using 4 parameters: 
 
-- $\alpha$: control the position of center.
-- $\beta$: controls the amount spread from the center.
-- $\gamma$: control the variance.
-- $\var$: control the position along the $x$ axis.
+- $\alpha$: control the position of center, up or down.
+- $\beta$: controls the spread of the center within the variance.
+- $\gamma$: control the spread of variance.
+- $\delta$: control the position of the center, left or right.
+
+![image-20220423123439702](https://raw.githubusercontent.com/redcxx/note-images/master/2022/04/upgit_20220423_1650713679.png)
 
 ### Multivariate Normal
 
+- multi-value version of univariate normal
+  - multiple positions, multiple variances, each control its own axes.
+
 ### Normal Inverse Wishart
+
+- Suitable for describing uncertainty in the parameters of a multivariate normal distribution. Similar to Beta describing the parameter of Bernoulli; and normal inverse gamma describing parameters of univariate normal.
+- It is just a function that produces a positive value for any valid mean vector µ and covariance matrix Σ, such that when we integrate over all possible values of µ and Σ, the answer is one.
+
+![image-20220423132514253](https://raw.githubusercontent.com/redcxx/note-images/master/2022/04/upgit_20220423_1650716714.png)
+
+- α spread of covariance
+- Ψ average covariance
+- γ spread of mean
+- δ average mean
 
 ### Conjugate
 
-|                     | conjugate to |                             |
-| ------------------- | ------------ | --------------------------- |
-| Bernoulli           |              | Beta                        |
-| categorical         |              | dirichlet                   |
-| univariate normal   |              | normal-scaled inverse gamma |
-| multivariate normal |              | normal inverse wishart      |
+|                     | conjugate(*similar*) to |                             |
+| ------------------- | ----------------------- | --------------------------- |
+| Bernoulli           |                         | Beta                        |
+| categorical         |                         | dirichlet                   |
+| univariate normal   |                         | normal-scaled inverse gamma |
+| multivariate normal |                         | normal inverse wishart      |
 
+When we multiply a distribution with its conjugate, the result is proportional to a new distribution which has the same form as the conjugate. For example:
+$$
+\operatorname{Bern}_{x}[\lambda] \cdot \operatorname{Beta}_{\lambda}[\alpha, \beta]=\kappa(x, \alpha, \beta) \cdot \operatorname{Beta}_{\lambda}[\tilde{\alpha}, \tilde{\beta}]
+$$
+where κ is a scaling factor that is constant respect to our variables. Proof:
+$$
+\begin{aligned}
+\operatorname{Bern}_{x}[\lambda] \cdot \operatorname{Beta}_{\lambda}[\alpha, \beta] &=\lambda^{x}(1-\lambda)^{1-x} \frac{\Gamma[\alpha+\beta]}{\Gamma[\alpha] \Gamma[\beta]} \lambda^{\alpha-1}(1-\lambda)^{\beta-1} \\
+&=\frac{\Gamma[\alpha+\beta]}{\Gamma[\alpha] \Gamma[\beta]} \lambda^{x+\alpha-1}(1-\lambda)^{1-x+\beta-1} \\
+&=\frac{\Gamma[\alpha+\beta]}{\Gamma[\alpha] \Gamma[\beta]} \frac{\Gamma[x+\alpha] \Gamma[1-x+\beta]}{\Gamma[x+\alpha+1-x+\beta]} \operatorname{Beta}_{\lambda}[x+\alpha, 1-x+\beta] \\
+&=\kappa(x, \alpha, \beta) \cdot \operatorname{Beta}_{\lambda}[\tilde{\alpha}, \tilde{\beta}]
+\end{aligned}
+$$
 
 
 ## Fitting data to normal distribution
@@ -250,7 +289,16 @@ We can model the distribution of the $\mu$ and $\sigma$ using 4 parameters:
 
 ### Maximum Likelihood
 
-We calculate the mean and variance of the data:
+We estimate the parameters using:
+$$
+\begin{aligned}
+\hat{\boldsymbol{\theta}} &=\underset{\boldsymbol{\theta}}{\operatorname{argmax}}\left[\operatorname{Pr}\left(\mathbf{x}_{1 \ldots I} \boldsymbol{\theta}\right)\right] \\
+&=\underset{\boldsymbol{\theta}}{\operatorname{argmax}}\left[\prod_{i=1}^{I} \operatorname{Pr}\left(\mathbf{x}_{i} \mid \boldsymbol{\theta}\right)\right]
+\end{aligned}
+$$
+This is because in order to achieve maximum, $\theta$ must be configured such that its distribution closely fits the actual data $x_i$, because $Pr(x|\theta)=Pr(x,\theta)/Pr(\theta)$, by assuming that the distribution of $\theta$ is uniform, we need to maximize the overlapping area of $\theta$ and $x$, this is achieved when $\theta$ and $x$ have the same shape, i.e. same distribution.
+
+To do this, we calculate the mean and variance of the data, in the case of modeling using Gaussian distribution.
 $$
 \begin{align*}
 \hat{\mu}&=\text{mean}(X)&=&\frac{\sum_{i=1}^I(x_i)}{I}\\
@@ -260,13 +308,18 @@ $$
 
 ### Maximize a Posterior
 
-Same as the Maximum Likelihood, except we have additional information, the prior $\hat{\mu}$ and $\hat{\sigma}^2$, which allow us to configure out the probability of the new  $\hat{\mu}$ and $\hat{\sigma}^2$ given the old  $\hat{\mu}$ and $\hat{\sigma}^2$. So instead of maximizing:
+Now, what if our prior is not uniform? i.e. we already had some previous data available that hints us about what will happen. the prior $\hat{\mu}$ and $\hat{\sigma}^2$, which allow us to configure out the probability of the new  $\hat{\mu}$ and $\hat{\sigma}^2$ given the old  $\hat{\mu}$ and $\hat{\sigma}^2$. So we do:
 
-<img src="COMP0137 Machine Vision.assets/image-20211018171437581.png" alt="image-20211018171437581"  />
+$$
+\begin{aligned}
+\hat{\boldsymbol{\theta}} &=\underset{\boldsymbol{\theta}}{\operatorname{argmax}}\left[\operatorname{Pr}\left(\boldsymbol{\theta} \mid \mathrm{x}_{1 \ldots I}\right)\right] \\
+&=\underset{\boldsymbol{\theta}}{\operatorname{argmax}}\left[\frac{\operatorname{Pr}\left(\mathrm{x}_{1 \ldots I} \mid \theta\right) \operatorname{Pr}(\boldsymbol{\theta})}{\operatorname{Pr}\left(\mathrm{x}_{1 \ldots I}\right)}\right] \\
+&=\underset{\boldsymbol{\theta}}{\operatorname{argmax}}\left[\frac{\prod_{i=1}^{I} \operatorname{Pr}\left(\mathrm{x}_{i} \mid \boldsymbol{\theta}\right) \operatorname{Pr}(\boldsymbol{\theta})}{\operatorname{Pr}\left(\mathrm{x}_{1 \ldots I}\right)}\right]\\
+&=\underset{\boldsymbol{\theta}}{\operatorname{argmax}}{\prod_{i=1}^{I} \operatorname{Pr}\left(\mathrm{x}_{i} \mid \boldsymbol{\theta}\right) \operatorname{Pr}(\boldsymbol{\theta})}
 
-We do:
+\end{aligned}
+$$
 
-![image-20211018171505889](COMP0137 Machine Vision.assets/image-20211018171505889.png)
 
 ### Bayesian
 
@@ -280,69 +333,102 @@ when given a new data, we compute its probability using:
 
 It is probability of new data given a configuration, multiply by the probability of that configuration.
 
-## Model Complex Distribution
+The goal is to calculate the probability of each configuration:
+$$
+P(\theta \mid D)=\frac{\overbrace{P(D \mid \theta)}^{likelihood} \overbrace{P(\theta)}^{prior}}{P(D)}=\frac{P(D \mid \theta) P(\theta)}{\int_{\theta} P(D \mid \theta) P(\theta) d \theta}
+$$
 
-### Maximum Likelihood
+### Comparison
 
-Let's say we want to model the probability distribution of a image containing face. In the first attempt we use a normal distribution:
-$$
-Pr(x)=\text{Norm}[\mu,\sigma^2]
-$$
-where:
+> https://towardsdatascience.com/mle-map-and-bayesian-inference-3407b2d6d4d9
 
-- $x$ is the image pixel.
-- $\mu$ is the mean of the normal distribution.
-- $\sigma$ is the standard deviation and $\sigma^2$ covariance of the normal distribution.
+ML maximize $P(x|\theta)$ and MAP maximize $P(\theta|x)$, they return a single value, thus point estimator. Bayesian inference calculates the full posterior distribution, thus it return a PDF.
 
-The process of finding $\mu$ and $\sigma$ that best model the probability distribution, can be represented as:
-$$
-\hat{\mu},\hat{\sigma}^2=\underset{\mu,\sigma^2}{\text{argmax}}\left(\prod_{i=1}^{I}\text{Norm}_{x_i}[\mu,\sigma^2]\right)
-$$
-where:
+- Other point estimator exists such as expect a posterior (EAP)
 
-- $I$ is the number of samples.
-- $\text{Norm}_{x_i}[\mu,\sigma^2]$ is the probability of the current pixel $x_i$ under the chosen $\mu$ and $\sigma^2$.
+### Covariance
 
-This is just the mathematic way of saying we want to find the optimal $\mu$ and $\sigma^2$ which best fit the distribution of $x$. But more often, we will take the sum of logarithm instead of the product of all probability of $x$:
+Here we introduce three type of covariances:
 $$
-\hat{\mu},\hat{\sigma}^2=\underset{\mu,\sigma^2}{\text{argmax}}\left(\sum_{i=1}^{I}\log\left(\text{Norm}_{x_i}[\mu,\sigma^2]\right)\right)
+\boldsymbol{\Sigma}_{\text {spher }}=\left[\begin{array}{cc}
+\sigma^{2} & 0 \\
+0 & \sigma^{2}
+\end{array}\right] \quad \boldsymbol{\Sigma}_{\text {diag }}=\left[\begin{array}{cc}
+\sigma_{1}^{2} & 0 \\
+0 & \sigma_{2}^{2}
+\end{array}\right] \quad \boldsymbol{\Sigma}_{\text {full }}=\left[\begin{array}{cc}
+\sigma_{11}^{2} & \sigma_{12}^{2} \\
+\sigma_{21}^{2} & \sigma_{22}^{2}
+\end{array}\right]
 $$
-This is because probability of any given $x_i$ is represented as a decimal between $0$ and $1$. If we multiply such number repeatedly, then it will keep getting smaller (e.g. $0.5\times 0.5=0.25$), and at the end it will out of the precision range of the computer (if we have a lot of samples).
-$$
-\begin{align*}
-&\underset{\mu,\sigma^2}{\text{argmax}}\left(\sum_{i=1}^{I}\log\left(\text{Norm}_{x_i}[\mu,\sigma^2]\right)\right)\\
-=&\underset{\mu,\sigma^2}{\text{argmax}}\left(-0.5I\log(2\pi)-0.5I\log\sigma^2-0.5\sum_{i=1}^{I}\frac{(x_i-\mu)^2}{\sigma^2}\right)
-\end{align*}
-$$
-Now if we differentiate with respect to $\mu$ we get:
-$$
-\begin{align*}
-\frac{\partial L}{\partial{\mu}}&=\sum^{I}_{i=1}\frac{x_i-\mu}{\sigma^2}\\
-&=\frac{\sum_{i=1}^Ix_i}{\sigma^2}-\frac{I\mu}{\sigma^2}\\
-\hat{\mu}&=\frac{\sum{_{i=1}^{I}x_i}}{I}\\
-&=\text{mean}(x)
-\end{align*}
-$$
-and similarly for $\sigma$:
-$$
-\hat{\sigma}^2=\sum_{i=1}^I\frac{(x_i-\hat{\mu})^2}{I}
-$$
-This is the called maximum likelihood for normal distribution, we fit a normal distribution to the given data.
 
-### Maximum a Posterior
+- Spherical: scaled identity.
+- Diagonal: diagonal.
+- Full: symmetric and positive definite.
 
-Now, what if we have some prior knowledge about the data? For example, we have a previous version of the data and we know its probability distribution, how do we utilize this information? Well, this is where bayesian rule is used, the rule says:
-$$
-Pr(\theta|x)=\frac{Pr(x|\theta)Pr(\theta)}{Pr(x)}
-$$
-where $\theta$ is the distribution. To maximize $\theta$ in this term is same as maximizing the numerator only, as the denominator is same for all $\theta$.
+<img src="https://raw.githubusercontent.com/redcxx/note-images/master/2022/04/upgit_20220424_1650800412.png" alt="image-20220424124010323" style="zoom:80%;" />
 
-### Bayesian Approach
+### Properties
 
-Now instead of find the best $\theta$, why don't we have a probability distribution over all $\theta$? Because although some theta does not fit best into the data, they are still probable.
+If we have normal distribution of variable $x$:
+$$
+Pr(x)=\operatorname{Norm}_x[\mathbf{\mu}, \mathbf{\Sigma}]
+$$
+Then we have variable $y=Ax+b$ then its corresponding normal distribution is:
+$$
+Pr(x)=\operatorname{Norm}_x[A\mu+b, A\Sigma A^T]
+$$
+So to draw a sample of any distribution by transforming it from the standard normal distribution (mean 0, covariance identity), we first draw $x$ from a normal distribution, then apply $y=\Sigma^{-1}x+\mu$.
 
-From the bayesian rule, you can see that it result in a probability over all possible distributions given the past information, so in order to calculate the probability of the new data, we do:
+> TODO: how is this dervied
+
+- If we marginalize a multi-variate normal, then the result also follows normal distribution
+
+- If we condition on a subset of multi-variate normal on the using the rest of the variables, the conditioned distribution is also normal.
+
+- The product of two normal distribution is also another normal distribution:
+  $$
+  \begin{aligned}
+  \operatorname{Norm}_{\mathbf{x}}[\mathbf{a}, \mathbf{A}] \operatorname{Norm}_{\mathbf{x}}[\mathbf{b}, \mathbf{B}] =
+  \kappa \cdot \operatorname{Norm}_{\mathbf{x}} {\left[\left(\mathbf{A}^{-1}+\mathbf{B}^{-1}\right)^{-1}\left(\mathbf{A}^{-1} \mathbf{a}+\mathbf{B}^{-1} \mathbf{b}\right),\left(\mathbf{A}^{-1}+\mathbf{B}^{-1}\right)^{-1}\right] }
+  \end{aligned}
+  $$
+  <img src="https://raw.githubusercontent.com/redcxx/note-images/master/2022/04/upgit_20220424_1650818731.png" alt="image-20220424174529560" style="zoom:80%;" />
+
+- If  we have normal distribution over a variable $x=Ay+b$, then we can express the same normal distribution in term of $y=A'x+b'$ as well. It is often used in bayesian rule to move $P(x|y)$ to  $P(y|x)$.
+
+## Computer Vision
+
+We take visual data $x$, infer world state $w$ (discrete/continuous), the measure data $x$ is often noisy and can map to many $w$, so best we can do is return a posterior distribution $P(w|x)$. We need **model**  to relate $x$ and $w$; **learning algorithm** that takes a pair of $(x_i, w_i)$ to fit parameters $\theta$; and an **inference algorithm** that takes the model and a new $x$ and return the probability distribution of the world $P(w|x,\theta)$, or draw sample from learned posterior.
+
+- Inference is simpler with discriminative model, because we can directly compute $P(w|x)$; generative model make inference via bayesian rule which can be computational expensive.
+- Generative model is built on $P(x|w)$ and discriminative model built on $P(w|x)$. Since the world space can be much smaller than the data, e.g. image space vs some aspect of the world, it may be more costly to build discriminative model.
+  Secondly, the parameter used to describe the data maybe much larger than describing the world, even thought both configuration describing the data maybe referring to the same world state, and these redundancy can be expensive.
+- The process of how data is created is more close to $P(x|w)$, we can account for perspective projection and occulusion, other approach requires learning these phenomena from the data.
+- Generative model model the joint distribution over all data dimensions and can effectively interpolate missing elements.
+- Generative model allows us to use expert prior knowledge as prior, which is harder for discriminative model.
+
+Generative models are more common.
+
+Applications include: skin detection and background subtraction.
+
+#### Why multivariate model may not work
+
+- It is unimodal, may not represent well by a single peak.
+- not robust, single outlier can dramatically affects the estimate of the mean and covariance.
+- too many parameters, the covariance matrix contains $D(D+1)/2$ parameters, sometimes forced to use diagonal form.
+
+<img src="https://raw.githubusercontent.com/redcxx/note-images/master/2022/04/upgit_20220424_1650833595.png" alt="image-20220424215313629" style="zoom:80%;" />
+
+#### Hidden Variable
+
+Just a unknown distribution, we will then have a joint probability and we will marginalize it out later:
 $$
-Pr(x^*|x_{1\dots I})=\int Pr(x^*|\theta)Pr(\theta|x_{1\dots I})\;d\theta
+\operatorname{Pr}(\mathbf{x} \mid \boldsymbol{\theta})=\int \operatorname{Pr}(\mathbf{x}, \mathbf{h} \mid \boldsymbol{\theta}) d \mathbf{h}
 $$
-This means for every possible distribution we compute the probability of the new data has on it, then scale it by the probability of it on the old data.
+The model involved often have hidden variable, in these cases, it will have neat close form solution only if we consider the hidden variable (which we cannot as it is hidden). We now need to apply non-linear optimization techniques or the expectation maximization algorithm to the right hand side of below equation, similar to ML:
+$$
+\hat{\boldsymbol{\theta}}=\underset{\boldsymbol{\theta}}{\operatorname{argmax}}\left[\sum_{i=1}^{I} \log \left[\int \operatorname{Pr}\left(\mathbf{x}_{i}, \mathbf{h}_{i} \mid \boldsymbol{\theta}\right) d \mathbf{h}_{i}\right]\right]
+$$
+
+> continue: pg108
