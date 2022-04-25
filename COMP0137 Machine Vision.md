@@ -412,7 +412,9 @@ Generative models are more common.
 
 Applications include: skin detection and background subtraction.
 
-#### Why multivariate model may not work
+## Normal Distribution
+
+### Why multivariate model may not work
 
 - It is unimodal, may not represent well by a single peak.
 - not robust, single outlier can dramatically affects the estimate of the mean and covariance.
@@ -420,7 +422,7 @@ Applications include: skin detection and background subtraction.
 
 <img src="https://raw.githubusercontent.com/redcxx/note-images/master/2022/04/upgit_20220424_1650833595.png" alt="image-20220424215313629" style="zoom:80%;" />
 
-#### Hidden Variable
+### Hidden Variable
 
 Just a unknown distribution, we will then have a joint probability and we will marginalize it out later:
 $$
@@ -431,4 +433,211 @@ $$
 \hat{\boldsymbol{\theta}}=\underset{\boldsymbol{\theta}}{\operatorname{argmax}}\left[\sum_{i=1}^{I} \log \left[\int \operatorname{Pr}\left(\mathbf{x}_{i}, \mathbf{h}_{i} \mid \boldsymbol{\theta}\right) d \mathbf{h}_{i}\right]\right]
 $$
 
-> continue: pg108
+### EM Algorithm
+
+> skipped
+
+### Mixture of Gaussian
+
+Mixture of Gaussian is a model that suitable for EM algorithm, it describe data as sum of $K$ normal distributions.
+$$
+\begin{aligned}
+\hat{\boldsymbol{\theta}} &=\underset{\boldsymbol{\theta}}{\operatorname{argmax}}\left[\sum_{i=1}^{I} \log \left[\operatorname{Pr}\left(\mathbf{x}_{i} \mid \boldsymbol{\theta}\right)\right]\right] \\
+&=\underset{\boldsymbol{\theta}}{\operatorname{argmax}}\left[\sum_{i=1}^{I} \log \left[\sum_{k=1}^{K} \lambda_{k} \operatorname{Norm}_{\mathbf{x}_{i}}\left[\boldsymbol{\mu}_{k}, \boldsymbol{\Sigma}_{k}\right]\right]\right]
+\end{aligned}
+$$
+where $\lambda_k$ is the weight for each normal distribution that sums to one. Unfortunately, the summation inside logorithm precludes a simple solution, non-linear optimization techniques are good but it would be better to maintain constraints on the parameters, i.e. $\lambda_k$ sums to one and covariances must be positive definite.
+
+> TODO: skipped: ~pg115
+>
+> - Mixture of Gaussians as a marginalization
+> - Expectation maximization for fitting mixture models
+
+- It is important to include priors over model parameters $P(\theta)$ to prevent Gaussian exclusively associate with one single data point; as the variance of it will get smaller and likelihood increases without bound.
+
+- It is also sensitive to outlier as mentioned
+  <img src="https://raw.githubusercontent.com/redcxx/note-images/master/2022/04/upgit_20220425_1650879305.png" alt="image-20220425103504133" style="zoom:80%;" />
+
+
+### t-distribution
+
+We can use student distribution (t-distribution) which is closely related with normal distribution but allowed to parameterize the length of the tail:
+$$
+\begin{aligned}
+\operatorname{Pr}(x) &=\operatorname{Stud}_{\mathbf{x}}\left[\mu, \sigma^{2}, \nu\right] \\
+&=\frac{\Gamma\left[\frac{\nu+1}{2}\right]}{\sqrt{\nu \pi \sigma^{2}} \Gamma\left[\frac{\nu}{2}\right]}\left(1+\frac{(x-\mu)^{2}}{\nu \sigma^{2}}\right)^{-\frac{\nu+1}{2}}
+\end{aligned}
+$$
+The degree of freedom $v\in(0,\infin]$ controls the length of the tail.
+
+> TODO: skipped pg119
+>
+> - pdf
+> - t-distribution as a marginalization
+> - Expectation maximization for fitting t-distributions
+
+
+
+### Factor Analysis
+
+Dimensionality is the last problem we have for Gaussian distribution here, with an image of $60\times60$, each pixels containing $3$ RGB values, we have $60\times60\times 3=10800$ values, to model its covariance, the matrix will have $10800\times10800$ entries which is too much for today's computer. The diagonal form contains fewer parameters but this is much simplification --- we are assuming each pixels are independent which is clearly not true.
+
+The factor analyzer is a linear subspace of a higher dimension that can be reached via a linear combination of a set of basis functions. It can be seen as modeling part of the high dimensions with a full model and mops up the remaining variations in a diagonal model. In general, $D$-dimension contains $1\dots D-1$ dimension subspaces. Its PDF is:
+$$
+  \operatorname{Pr}(\mathbf{x})=\operatorname{Norm}_{\mathbf{x}}\left[\boldsymbol{\mu}, \boldsymbol{\Phi} \boldsymbol{\Phi}^{T}+\mathbf{\Sigma}\right]
+$$
+where $\boldsymbol{\Phi}\boldsymbol{\Phi}^T$ is the covariance model over the subspace and each of its $K$ columns are termed *factors*, they are the set of directions where the data covary the most.
+
+  > TODO skipped: 126
+  >
+  > -  Expectation maximization for learning factor analyzers
+  > - Combining models
+  > - Expectation maximization in detail
+
+  ### Applications
+
+  - Face detection
+  - Object recognition
+  - Segmentation
+  - Frontal face recognition
+  - Changing face pose (regression)
+
+  > skipped pg140: Transformations as hidden variables
+
+## Regression
+
+Regression is discriminative, modeled as:
+$$
+\operatorname{Pr}\left(w_{i} \mid \mathbf{x}_{i}, \boldsymbol{\theta}\right)=\operatorname{Norm}_{w_{i}}\left[\phi_{0}+\boldsymbol{\phi}^{T} \mathbf{x}_{i}, \sigma^{2}\right]
+$$
+where $\phi_0$ can be seem as the y-intercept of a hyperplane and $\boldsymbol{\phi}^T$ can be seem as the gradient wrt each of data's dimension. We can simplified the notation by pre-pending $1$ to $\boldsymbol{x}$ and $\phi_0$ to $\boldsymbol{\phi}^{T}$:
+$$
+\operatorname{Pr}\left(w_{i} \mid \mathbf{x}_{i}, \boldsymbol{\theta}\right)=\operatorname{Norm}_{w_{i}}\left[\boldsymbol{\phi}^{T} \mathbf{x}_{i}, \sigma^{2}\right]
+$$
+Furthermore since each training sample is independent we can write:
+$$
+\operatorname{Pr}(\mathbf{w} \mid \mathbf{X})=\operatorname{Norm}_{\mathbf{w}}\left[\mathbf{X}^{T} \boldsymbol{\phi}, \sigma^{2} \mathbf{I}\right]
+$$
+For maximum likelihood, we seek:
+$$
+\begin{aligned}
+\hat{\boldsymbol{\theta}} &=\underset{\boldsymbol{\theta}}{\operatorname{argmax}}[\operatorname{Pr}(\mathbf{w} \mid \mathbf{X}, \boldsymbol{\theta})] \\
+&=\underset{\boldsymbol{\theta}}{\operatorname{argmax}}[\log [\operatorname{Pr}(\mathbf{w} \mid \mathbf{X}, \boldsymbol{\theta})]]
+\end{aligned}
+$$
+Substituting we get:
+$$
+\hat{\boldsymbol{\phi}}, \hat{\sigma}^{2}=\underset{\boldsymbol{\phi}, \sigma^{2}}{\operatorname{argmax}}\left[-\frac{I \log [2 \pi]}{2}-\frac{I \log \left[\sigma^{2}\right]}{2}-\frac{\left(\mathbf{w}-\mathbf{X}^{T} \boldsymbol{\phi}\right)^{T}\left(\mathbf{w}-\mathbf{X}^{T} \boldsymbol{\phi}\right)}{2 \sigma^{2}}\right]
+$$
+
+$$
+\begin{aligned}
+\hat{\boldsymbol{\phi}} &=\left(\mathbf{X X}^{T}\right)^{-1} \mathbf{X} \mathbf{w} \\
+\hat{\sigma}^{2} &=\frac{\left(\mathbf{w}-\mathbf{X}^{T} \boldsymbol{\phi}\right)^{T}\left(\mathbf{w}-\mathbf{X}^{T} \boldsymbol{\phi}\right)}{I}
+\end{aligned}
+$$
+
+### Problems
+
+- Predictions are overconfident, small changes of the slope can introduce large changes as we move away from the y-intercept, which is not reflected in the posterior distribution.
+- Limited to linear functions which has no reason for real world data to be.
+- High dimensional data with redundant information can result in unnecessary complexity in the resulting model.
+
+<img src="https://raw.githubusercontent.com/redcxx/note-images/master/2022/04/upgit_20220425_1650893030.png" alt="image-20220425142348838" style="zoom:80%;" />
+
+### Bayesian linear regression
+
+To tackle overconfidence, we can compute a probability distribution of the parameter $\phi$, during inference we take a weighted average of them. We can also add prior to it easily.
+
+- The resulting posterior distribution is always narrower than the posterior, therefore it can only be used to refine the distribution.
+- It is less confidence as the data departs from the mean because uncertainty in the gradient causes increasing uncertainty in the predictions as we move further away.
+
+To implement, we have the close form:
+$$
+\operatorname{Pr}(\phi \mid \mathbf{X}, \mathbf{w}) =\operatorname{Norm}_{\phi}\left[\frac{1}{\sigma^{2}} \mathbf{A}^{-1} \mathbf{X} \mathbf{w}, \mathbf{A}^{-1}\right]
+$$
+where:
+$$
+\mathbf{A} =\frac{1}{\sigma^{2}} \mathbf{X} \mathbf{X}^{T}+\frac{1}{\sigma_{p}^{2}} \mathbf{I}
+$$
+To make inference with new data $x^*$, we take the infinite weighted sum (integral) for all possible configurations compute:
+$$
+\begin{aligned}
+\operatorname{Pr}\left(w^{*} \mid \mathbf{x}^{*}, \mathbf{X}, \mathbf{w}\right) &=\int \operatorname{Pr}\left(w^{*} \mid \mathbf{x}^{*}, \boldsymbol{\phi}\right) \operatorname{Pr}(\boldsymbol{\phi} \mid \mathbf{X}, \mathbf{w}) d \boldsymbol{\phi} \\
+&=\int \operatorname{Norm}_{w^{*}}\left[\phi^{T} \mathbf{x}^{*}, \sigma^{2}\right] \operatorname{Norm}_{\boldsymbol{\phi}}\left[\frac{1}{\sigma^{2}} \mathbf{A}^{-1} \mathbf{X} \mathbf{w}, \mathbf{A}^{-1}\right] d \boldsymbol{\phi} \\
+&=\operatorname{Norm}_{w^{*}}\left[\frac{1}{\sigma^{2}} \mathbf{x}^{* T} \mathbf{A}^{-1} \mathbf{X} \mathbf{w}, \mathbf{x}^{* T} \mathbf{A}^{-1} \mathbf{x}^{*}+\sigma^{2}\right]
+\end{aligned}
+$$
+The result is a constant in the normal distribution $w^*$.
+
+We need to compute $A^{-1}$ which can be huge matrix for large $D$, but luckily we can use Woodbury identity to rewrite $A^{-1}$ as:
+$$
+\mathbf{A}^{-1}=\left(\frac{1}{\sigma^{2}} \mathbf{X X}^{T}+\frac{1}{\sigma_{p}^{2}} \mathbf{I}_{D}\right)^{-1}=\sigma_{p}^{2} \mathbf{I}_{D}-\sigma_{p}^{2} \mathbf{X}\left(\mathbf{X}^{T} \mathbf{X}+\frac{\sigma^{2}}{\sigma_{p}^{2}} \mathbf{I}_{I}\right)^{-1} \mathbf{X}^{T}
+$$
+We still need to inverse but it is now the size $I\times I$ where $I$ is the number of samples.
+
+> TODO: substitute this shit back into the equation to form a larger shit
+>
+> - fitting variance
+
+### Non-linear regression
+
+> TODO: skipped
+>
+> - Bayesian nonlinear regression
+
+### Kernels and the kernel trick
+
+bayesian non-linear regression is rarely used because it is costly to compute $z_i^Tz_i$ in the predictive distribution when the transformed space (by the radial function $z_i=f[x_i]$) is high-dimensional. An alternative is to define a kernel function $k[x_i,x_j]$ that replace $f[x_i]^Tf[x_i]$, this way we can project data to high dimensional space with low cost. 
+
+Kernel need to be symmetric and corresponding to some $f[x_i]$, specifically, Mercer’s theorem states that a kernel function is valid when the kernel’s arguments are in a measurable space, and the kernel is positive semidefinite so that:
+$$
+\sum_{i j} \mathrm{k}\left[\mathbf{x}_{i}, \mathbf{x}_{j}\right] a_{i} a_{j} \geq 0
+$$
+for any finite set $\{x_n\}_{n=1}^N$. Some examples:
+
+- linear
+- degreee $p$ polynomial
+- radial bases function (RBF) / gaussian.
+
+### Gaussian process regression
+
+is when kernel is used.
+
+### Sparse linear regression
+
+Goal is to find the gradient vector where most entries are zeros.
+
+- faster as we no longer need to make all measurements
+- encourage model to capture the main trend without over-fitting
+
+It is done by imposing an penalty over gradient parameters $\boldsymbol{\phi}=[\phi_1,\phi_2,\dots,\phi_D]^T$ with a product of one-dimensional t-distributions so that
+$$
+\begin{aligned}
+\operatorname{Pr}(\boldsymbol{\phi}) &=\prod_{d=1}^{D} \operatorname{Stud}_{\phi_{d}}[0,1, \nu] \\
+&=\prod_{d=1}^{D} \frac{\Gamma\left(\frac{\nu+1}{2}\right)}{\sqrt{\nu \pi} \Gamma\left(\frac{\nu}{2}\right)}\left(1+\frac{\phi_{d}^{2}}{\nu}\right)^{-(\nu+1) / 2}
+\end{aligned}
+$$
+The product of univariate t-distributions has ridges of high probability along the coordinate axes, which encourages sparseness.
+
+<img src="https://raw.githubusercontent.com/redcxx/note-images/master/2022/04/upgit_20220425_1650899927.png" alt="image-20220425161846578" style="zoom:80%;" />
+
+However, if the transformed data z is very high-dimensional, we will need correspondingly more hidden variables $h_d$ to cope with these dimensions. Obviously, this idea will not transfer to kernel functions where the dimensionality of the transformed data could be infinite. Therefore we have relevance vector machine.
+
+> skipped: pg 163
+>
+> - Dual linear regression
+> - Relevance vector regression
+
+### Applications
+
+- Human body pose estimation
+- Displacement experts
+
+## Classification Models
+
+<img src="https://raw.githubusercontent.com/redcxx/note-images/master/2022/04/upgit_20220425_1650900503.png" alt="image-20220425162823498" style="zoom:80%;" />
+
+> TODO: trees forest boosting
+
+> TODO: dependent variables graphs
