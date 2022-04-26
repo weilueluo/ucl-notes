@@ -37,6 +37,8 @@ History:
 
 Machine Vision is hard because of (1) its dimensionality, all combinations of pixel values is a huge number (though we will never see most of them); (2) It is a inverse problem, i.e. the mapping from scene to image is many-to-one, it is not unique; (3) real-time is hard because video contains many data. Luckily, we know about how graphics works, have prior knowledge that expects what we will see in the image (help non-uniqueness), and there are huge data available.
 
+<img src="https://raw.githubusercontent.com/redcxx/note-images/master/2022/04/upgit_20220426_1650989254.png" alt="image-20220426170734630" style="zoom:80%;" />
+
 ## Overview
 
 1. Probability
@@ -636,8 +638,285 @@ However, if the transformed data z is very high-dimensional, we will need corres
 
 ## Classification Models
 
-<img src="https://raw.githubusercontent.com/redcxx/note-images/master/2022/04/upgit_20220425_1650900503.png" alt="image-20220425162823498" style="zoom:80%;" />
+
 
 > TODO: trees forest boosting
 
 > TODO: dependent variables graphs
+
+### Logistic regression
+
+It is linear model + sigmoid activation
+
+- overconfident - learnt using maximum likelihood
+- describe linear decision boundary
+- inefficient and prone to overfitting in high dimensions
+
+<img src="https://raw.githubusercontent.com/redcxx/note-images/master/2022/04/upgit_20220425_1650900503.png" alt="image-20220425162823498" style="zoom:80%;" />
+
+### Bayesian
+
+logistic regression+bayesian, but no closed form as there is no conjugate prior. We need to make an approximation. laplace approximation is a general method for approximating complex probability function, we select mean at the peak of the distribution (MAP), and covariance such that the second derivatives at the peak match the second derivative of the true posterior distribution at the peak.
+
+### Nonlinear logistics regression
+
+To build non linearity, we adopt same approach as regression, compute a nonlinear transformation $z=f[x]$, then apply logistic regress to $z$. The logic is that non linear activations can be built as a linear sum of nonlinear basis functions. e.g.
+
+- Heaviside step function of projection
+- arc tangent functions of projections
+- radial basis functions.
+
+### Dual logistic regression
+
+This is to tackle the problem of raising $x$ to high dimensionality will cause update such as newton's method to be slow. We express the gradient parameter $\phi$ as a weighted sum of the observed data $\phi=X\psi$. If number of data points $I$ is less than the dimension of the data, then we can reduce the number of parameters.
+
+The price that we pay for this reduction is that we can now only choose gradient vectors φ that are in the space spanned by the data examples. However, the gradient vector represents the direction in which the final probability $Pr(w = 1|x)$ changes fastest, and this should not point in a direction in which there was no variation in the training data anyway, so this is not a limitation.
+
+### Kernel logistic regression
+
+Since the model for dual logistic regression (linear/non-linear version) rely only on the inner product of the transformed $x_i^Tx_j$,  It is suitable for kernelization.
+$$
+\mathrm{k}\left[\mathbf{x}_{i}, \mathbf{x}_{j}\right]=\mathbf{z}_{i}^{T} \mathbf{z}_{j}
+$$
+The Bayesian formulation of kernel logistic regression, which is sometimes known as Gaussian process classification, proceeds along similar lines. 
+
+Common kernel include the radial basis kernel:
+$$
+\mathrm{k}\left[\mathbf{x}_{i}, \mathbf{x}_{j}\right]=\exp \left[-0.5\left(\frac{\left(\mathbf{x}_{i}-\mathbf{x}_{j}\right)^{T}\left(\mathbf{x}_{i}-\mathbf{x}_{j}\right)}{\lambda^{2}}\right)\right]
+$$
+
+### Relevance vector classification
+
+The Bayesian version of the kernel logistic regression model is powerful, but computational expensive because we need to compute the dot product / kernel function between each training sample, it would be more efficient if the model depended only sparsely on training data. To achieve this, we add a penalty for non-zero weighted training sample.
+
+As in the relevance regression model (section 8.8), we replace the normal prior over the dual parameters ψ (equation 9.25) with a product of one-dimensional t-distributions so that:
+$$
+\operatorname{Pr}(\boldsymbol{\psi})=\prod_{i=1}^{I} \operatorname{Stud}_{\boldsymbol{\psi}_{i}}[0,1, \nu]
+$$
+Applying the Bayesian approach to this model with respect to the parameters Ψ is known as relevance vector classification.
+
+...
+
+As this optimization proceeds, some of the hidden variables  $h_i$ will become very large. This means that the prior over the relevant parameter becomes very concentrated around zero and that the associated data points contribute nothing to the final solution. These can be removed, leaving a kernelized classifier that depends only sparsely on the data and can hence be evaluated very efficiently
+
+### Incremental fitting and boosting
+
+ we add the parameter that improves the objective function most at each stage and then consider this fixed. As the most discriminative parts of the model are added first, it is possible to truncate this process after only a small fraction of the parameters are added and still achieve good results. The remaining, unused parameters can be considered as having a value of zero and so this model also provides a sparse solution. We term this approach incremental fitting
+
+...
+
+This procedure is obviously sub-optimal as we do not learn the parameters together or even revisit early parameters once they have been set. However, it has three nice properties.
+
+1. It creates sparse models
+   the weights φk tend to decrease as we move through the sequence and each subsequent basis function tends to have less influence on the model. Consequently, the series can be truncated to the desired length and the associated performance is likely to remain good.
+2. The previous logistic regression models have been suited to cases where either the dimensionality D of the data is small (original formulation) or the number of training examples I is small (dual formulation).
+   A strong advantage of incremental fitting is that it is still practical when the data are high dimensional and there are a large number of training examples.
+3. Learning is relatively inexpensive because we only optimize a few parameters at each stage.
+
+### Boosting
+
+Boosting is a special case of incremental fitting. Consider a logistic regression model based on a sum of step functions:
+$$
+a_{i}=\phi_{0}+\sum_{k=1}^{K} \phi_{k} \text { heaviside }\left[\boldsymbol{\alpha}_{k}^{T} \mathbf{x}_{i}\right]
+$$
+One way to think about the step functions is as weak classifiers; they return 0 or 1 depending on the value of xi so each classifies the data. The model combines these weak classifiers to compute a final strong classifier. Schemes for combining weak classifiers in this way are generically known as boosting and this particular model is called logitboost.
+
+We cannot fit this using gradient descent because the gradient is not smooth (thus step function). We learn the logitboost model incrementally by adding one term at a time to the activation. However, now we exhaustively search over the predefined large set of weak classifiers, and for each, we use nonlinear optimization to estimate the weights φ0 and φk.
+
+This procedure may be made even more efficient (but more approximate) by choosing the weak classifier based on the log likelihood after just a single Newton or gradient descent step in the nonlinear optimization stage
+
+<img src="https://raw.githubusercontent.com/redcxx/note-images/master/2022/04/upgit_20220426_1650969657.png" alt="image-20220426114056175" style="zoom: 67%;" />
+
+Note that after each classifier is added, the relative importance of each data point is effectively changed: the data points contribute to the derivative according to how well they are currently predicted. Consequently, the later weak classifiers become more specialized to the more difficult parts of the data set that are not well classified by the early ones.
+
+> skipped  195
+>
+> - classification tree
+> - Multi-class logistic regression
+> - Random trees, forests, and ferns
+
+- A fern is a tree where the randomly chosen functions at each level of the tree are constrained to be the same. In other words, the data that pass through the left and right branches at any node are subsequently acted on by the same function (although the threshold level may optionally be different in each branch).
+
+  In practice, this means that every data point is acted on by the same sequence of functions. This can make implementation extremely efficient when we are evaluating the classifier repeatedly.
+
+- A random forest is a collection of random trees, each of which uses a different randomly chosen set of functions. By averaging together the probabilities P r(w ∗ |x ∗ ) predicted by these trees, a more robust classifier is produced. One way to think of this is as approximating the Bayesian approach; we are constructing the final answer by taking a weighted sum of the predictions suggested by different sets of parameters.
+
+### Summary
+
+- overconfident: add bayesian
+- linearity: add transformation function
+- dimension too high:
+  - subspace model
+  - data point < dimension: use dual formulation
+  - introduce sparsity
+    - add penalty for non-zero weights, to encourage sparse result
+    - add parameters greedily, incrementally, starts from those that improves most.
+
+### Probabilistic vs non-probabilistic
+
+- probabilistic model has no serious disadvantage
+- naturally produce estimate of certainty
+- easily extend to multi-class instead of rely on one-vs-all
+
+
+
+- multi-layer perceptron is similar to non-linear regression
+- adaboost is similar to logitboost but not probabilistic, similar performance.
+- SVM is kernelized classifier that depends sparsely on the data.
+  - SVM does not assign certainty to its class predictions, it is not so easily extended to the multi-class case, it produces solutions that are less sparse than relevance vector classification, and it places more restrictions on the form of the kernel function. In practice, classification performance of the two models is again similar.
+
+## Graphical Model
+
+Previous models require modeling the joint probability of all data, relating all data to all possible world states which is impractical. So instead of joint probability of all data, we use conditional independence, which is a way of characterizing redundancies in the model. graphical model is a graph based representation to conditional independence.
+
+- The factor analyzer describes a linear subspace with a full covariance model, (i think) graphical model is not linear, but still is subspace model.
+
+If independence: $P(x,y)=P(x)P(y)$.
+
+if $x_1$ is conditionally independent with $x_3$ given $x_2$ then: 
+$$
+\begin{aligned}
+\operatorname{Pr}\left(x_{1} \mid x_{2}, x_{3}\right) &=\operatorname{Pr}\left(x_{1} \mid x_{2}\right)& \\
+\operatorname{Pr}\left(x_{3} \mid x_{1}, x_{2}\right) &=\operatorname{Pr}\left(x_{3} \mid x_{2}\right)&\text{by symmetric}
+\end{aligned}
+$$
+This means we can reduce the joint probability:
+$$
+\begin{aligned}
+\operatorname{Pr}\left(x_{1}, x_{2}, x_{3}\right) &=\operatorname{Pr}\left(x_{3} \mid x_{2}, x_{1}\right) \operatorname{Pr}\left(x_{2} \mid x_{1}\right) \operatorname{Pr}\left(x_{1}\right) \\
+&=\operatorname{Pr}\left(x_{3} \mid x_{2}\right) \operatorname{Pr}\left(x_{2} \mid x_{1}\right) \operatorname{Pr}\left(x_{1}\right)
+\end{aligned}
+$$
+
+### Directed graphical models
+
+- It takes the form of directed acyclic graph (DAG), if cycle then not valid probability disitrbution.
+
+- Any variable not in Markov blanket of variable $x$ is conditionally independent with $x$
+
+  - Markov blanket is the set of includes the parents, children, and parent of the children of $x$.
+
+  - Or you can test independence using a the following fit-everything-into-few-sentences-to-show-off-and-stupidly-confusing-with-its-head-tail-bullshit criterion:
+
+    > The variables in set A are conditionally independent of those in set B given set C if all routes from A to B are blocked. A route is blocked at a node if (i) this node is in C and the arrows meet head to tail or tail to tail or (ii) neither this node nor any of its descendants are in C and the arrows meet head to head.
+    >
+    > --- Koller & Friedman 2009
+
+- There is a one-to-one mapping between directed graphical models (acyclic directed graphs of conditional probability relations) and factorizations.
+
+### Undirected graphical models
+
+take the form of a product of potential functions φ[x1...N ] so that
+$$
+\operatorname{Pr}\left(x_{1 \ldots N}\right)=\frac{1}{Z} \prod_{c=1}^{C} \phi_{c}\left[x_{1 \ldots N}\right]
+$$
+where the potential function φc[x1...N ] always returns a positive number.
+
+- potential functions are not the same as conditional probabilities, usually no clear mapping.
+- Z is known as the partition function and normalizes the product of these positive functions
+  - intractable, so we can only compute up to a certain scale factor.
+
+Alternatively, the equation is same as:
+$$
+\operatorname{Pr}\left(x_{1 \ldots N}\right)=\frac{1}{Z} \exp \left[-\sum_{c=1}^{C} \psi_{c}\left[x_{1 \ldots N}\right]\right]
+$$
+this form of probabilistic is Gibbs distribution. The terms ψc[x1...N ] are functions that may return any real number and can be thought of as representing a cost for every combination of labels x1...N, the process of fitting the model (increase probability, decrease cost) is often called energy minimization .
+
+When the cost function address all variables, it is called a product of experts, but often we operate on subset, called **cliques**. using cliques $S_c$ we can rewrite equation as:
+$$
+\operatorname{Pr}\left(x_{1 \ldots N}\right)=\frac{1}{Z} \prod_{c=1}^{C} \phi_{c}\left[\mathcal{S}_{c}\right]
+$$
+This shows that the probability distribution is represented as a product of terms, we call this **markov random field**.
+
+We also call a fully connected subset of nodes where no more nodes can be added to form a larger set, a **maximal clique**.
+
+Now conditional independence can be establish easier:
+
+> One set of nodes is conditionally independent of another given a third if the third set separates them (prevents a path from the first node to the second).
+
+### Directed vs undirected
+
+- both represents a factorization of the probability distribution
+- both are generative model
+- they are not equivalent, cannot map one-to-one.
+
+### Applications
+
+| graph                                                        | model                                                        |
+| ------------------------------------------------------------ | ------------------------------------------------------------ |
+| ![image-20220426212647138](https://raw.githubusercontent.com/redcxx/note-images/master/2022/04/upgit_20220426_1651004807.png) | Hidden Markov Model (HMM)<br />interpret sign language       |
+| ![image-20220426212724423](https://raw.githubusercontent.com/redcxx/note-images/master/2022/04/upgit_20220426_1651004844.png) | Markov Tree<br />Fitting tree structured body model          |
+| ![image-20220426212745255](https://raw.githubusercontent.com/redcxx/note-images/master/2022/04/upgit_20220426_1651004865.png) | Markov Random Field<br />used as prior for semantic labeling tasks |
+| ![image-20220426212926710](https://raw.githubusercontent.com/redcxx/note-images/master/2022/04/upgit_20220426_1651004966.png) | Kalman filter<br />Same as HMM but unknowns are continuous   |
+
+### Finding solutions in many unknowns
+
+There can be huge number of states still. We cannot find even the MAP solution as too many world states to explore. We need to exploit the redundancy, for we will see some models have no polynomial algorithm.
+
+> skipped 234
+>
+> - Drawing samples
+> - learning
+
+### Discussion
+
+- It is generally more straightforward to draw samples from directed graphical models.
+- It is also easier to learn directed graphical models.
+
+## Models for chains and tree
+
+- chain model: connect to previous and subsequent node only
+  - directed and undirected in this case is equivalent
+- tree: no loop
+
+We also assume:
+
+- world states are discrete.
+- each data $x$ has associated world state $w$.
+- each data $x$ is conditionally independent on all other data and world states, given its associated world state $w$.
+
+Now maximum a posteriori and maximum marginals inference are tractable for this sub-class of models.
+
+### MAP for chains & Trees
+
+<img src="https://raw.githubusercontent.com/redcxx/note-images/master/2022/04/upgit_20220426_1651005960.png" alt="image-20220426214600716" style="zoom:80%;" />
+
+use dynamic algorithm
+
+> skip 255
+>
+> - marginal posterior inference for chains and trees
+> - Beyond chains and trees
+
+## Models for grids
+
+graphical models in which each label has a direct probabilistic connection to each of its four neighbours.
+
+These grid models are predicated on the idea that the pixel provides only very ambiguous information about the associated label
+
+MAP is only tractable in special cases inference, e.g. for pairwise MRFs is tractable in some circumstances using a family of approaches known collectively as graph cuts
+
+1. Most of the pixels are uncorrupted,so the data usually tell us which intensity value to pick.
+2. The uncorrupted image is mainly smooth, with few changes between intensity levels.
+
+> skipped 286
+>
+> - MAP inference for binary pairwise MRFs
+> - max flow min cut
+> - MAP inference for multi-label pairwise MRFs
+> - Multi-label MRFs with non-convex potentials
+> - Conditional random field
+> - Higher order models
+> - Directed models for grid
+
+### Discussion
+
+most problem that associate label with position in the image of this form is np-hard, we must resort to efficient approximate inference techniques such as the alpha-expansion algorithm
+
+## Preprocessing
+
+> skipped
+
+## Models for geometry
+
+None of the solving intrinsic and extrinsic parameters is in closed form. But we can convert it to homogenuous coordinates, then we can solve in closed form. we are not solving the original problem, but good starting point for non-linear opti 
