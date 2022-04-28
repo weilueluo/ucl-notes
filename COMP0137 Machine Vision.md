@@ -919,4 +919,16 @@ most problem that associate label with position in the image of this form is np-
 
 ## Models for geometry
 
-None of the solving intrinsic and extrinsic parameters is in closed form. But we can convert it to homogenuous coordinates, then we can solve in closed form. we are not solving the original problem, but good starting point for non-linear opti 
+None of the solving intrinsic and extrinsic parameters is in closed form. But we can convert it to homogenuous coordinates, then we can solve in closed form. we are not solving the original problem, but good starting point for non-linear optimization
+
+### Pinhole Camera
+
+The pinhole camera model is a generative model, it is essentially deterministic but we build probability model as there will be noise and unmodeled factors in the feature detection process z
+
+#### Learning extrinsic parameters
+
+$$
+\hat{\boldsymbol{\Omega}}, \hat{\boldsymbol{\tau}}=\underset{\boldsymbol{\Omega}, \boldsymbol{\tau}}{\operatorname{argmax}}\left[\sum_{i=1}^{I} \log \left[\operatorname{Pr}\left(\mathbf{x}_{i} \mid \mathbf{w}_{i}, \boldsymbol{\Lambda}, \boldsymbol{\Omega}, \boldsymbol{\tau}\right)\right]\right]
+$$
+
+ 
