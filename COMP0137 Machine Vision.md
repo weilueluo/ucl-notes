@@ -340,6 +340,8 @@ $$
 P(\theta \mid D)=\frac{\overbrace{P(D \mid \theta)}^{likelihood} \overbrace{P(\theta)}^{prior}}{P(D)}=\frac{P(D \mid \theta) P(\theta)}{\int_{\theta} P(D \mid \theta) P(\theta) d \theta}
 $$
 
+-  A delta function δ[z] is a function that integrates to one, and that returns zero everywhere except at z = 0. 
+
 ### Comparison
 
 > https://towardsdatascience.com/mle-map-and-bayesian-inference-3407b2d6d4d9
@@ -927,8 +929,372 @@ The pinhole camera model is a generative model, it is essentially deterministic 
 
 #### Learning extrinsic parameters
 
+known as  perspective-n-point (PnP) or exterior orientation problem
 $$
 \hat{\boldsymbol{\Omega}}, \hat{\boldsymbol{\tau}}=\underset{\boldsymbol{\Omega}, \boldsymbol{\tau}}{\operatorname{argmax}}\left[\sum_{i=1}^{I} \log \left[\operatorname{Pr}\left(\mathbf{x}_{i} \mid \mathbf{w}_{i}, \boldsymbol{\Lambda}, \boldsymbol{\Omega}, \boldsymbol{\tau}\right)\right]\right]
 $$
 
- 
+#### Learning intrinsic parameters
+
+known as calibration
+$$
+\hat{\boldsymbol{\Lambda}}=\underset{\boldsymbol{\Lambda}}{\operatorname{argmax}}\left[\max _{\boldsymbol{\Omega}, \boldsymbol{\tau}}\left[\sum_{i=1}^{I} \log \left[\operatorname{Pr}\left(\mathbf{x}_{i} \mid \mathbf{w}_{i}, \boldsymbol{\Lambda}, \boldsymbol{\Omega}, \boldsymbol{\tau}\right)\right]\right]\right]
+$$
+
+####  Inferring 3D world points
+
+estimate 3d point of a point in image using 2 cameras/projections is known as calibrated stereo reconstruction. more than 2 camera is called multi-view reconstruction
+$$
+\hat{\mathbf{w}}=\underset{\mathbf{w}}{\operatorname{argmax}}\left[\sum_{j=1}^{J} \log \left[\operatorname{Pr}\left(\mathbf{x}_{j} \mid \mathbf{w}, \boldsymbol{\Lambda}_{j}, \boldsymbol{\Omega}_{j}, \boldsymbol{\tau}_{j}\right)\right]\right]
+$$
+
+#### Problem
+
+Unfortunately, none of the above resulting objective functions can be optimized in closed form, each solution requires the use of nonlinear optimization. The general approach is to choose new objective functions that can be optimized in closed form, and where the solution is close to the solution of the true problem.
+
+We change original 3d to 2d mapping to 4d to 3d mapping using homogeneous coordinate, such that the projection becomes linear (to side step non linear part: division by w, this still occur, but it is the last step to convert back to original coordinate), then we could find close form solution, note they minimize algebraic error which is not guaranteed to be same as original solution, but good for non-linear optimization starting point.
+
+The complete model:
+$$
+\lambda\left[\begin{array}{l}
+x \\
+y \\
+1
+\end{array}\right]=\left[\begin{array}{cccc}
+\phi_{x} & \gamma & \delta_{x} & 0 \\
+0 & \phi_{y} & \delta_{y} & 0 \\
+0 & 0 & 1 & 0
+\end{array}\right]\left[\begin{array}{cccc}
+\omega_{11} & \omega_{12} & \omega_{13} & \tau_{x} \\
+\omega_{21} & \omega_{22} & \omega_{23} & \tau_{y} \\
+\omega_{31} & \omega_{32} & \omega_{33} & \tau_{z} \\
+0 & 0 & 0 & 1
+\end{array}\right]\left[\begin{array}{c}
+u \\
+v \\
+w \\
+1
+\end{array}\right]
+$$
+or in matrix form:
+$$
+\lambda \tilde{\mathbf{x}}=\left[\begin{array}{ll}
+\boldsymbol{\Lambda} & \mathbf{0}
+\end{array}\right]\left[\begin{array}{cc}
+\boldsymbol{\Omega} & \boldsymbol{\tau} \\
+\mathbf{0}^{T} & 1
+\end{array}\right] \tilde{\mathbf{w}}
+$$
+or even shorter for no reason:
+$$
+\lambda \tilde{\mathbf{x}}=\boldsymbol{\Lambda}\left[\begin{array}{ll}
+\boldsymbol{\Omega} & \boldsymbol{\tau}
+\end{array}\right] \tilde{\mathbf{w}}
+$$
+
+#### Learning extrinsic parameters
+
+We first multiply both side by $\Lambda^{-1}$:
+$$
+\lambda_{i}\left[\begin{array}{c}
+x_{i}^{\prime} \\
+y_{i}^{\prime} \\
+1
+\end{array}\right]=\left[\begin{array}{llll}
+\omega_{11} & \omega_{12} & \omega_{13} & \tau_{x} \\
+\omega_{21} & \omega_{22} & \omega_{23} & \tau_{y} \\
+\omega_{31} & \omega_{32} & \omega_{33} & \tau_{z}
+\end{array}\right]\left[\begin{array}{c}
+u_{i} \\
+v_{i} \\
+w_{i} \\
+1
+\end{array}\right]
+$$
+the new $x'_i$ and $y'_i$ are called *normalized image coordinates* -- result of using normalized camera.
+
+so we can solve for $\lambda$ by expanding last row of above matrix multiplication:
+$$
+\lambda_{i}=\omega_{31} u_{i}+\omega_{32} v_{i}+\omega_{33} w_{i}+\tau_{z}
+$$
+substitute back:
+$$
+\left[\begin{array}{c}
+\left(\omega_{31} u_{i}+\omega_{32} v_{i}+\omega_{33} w_{i}+\tau_{z}\right) x_{i}^{\prime} \\
+\left(\omega_{31} u_{i}+\omega_{32} v_{i}+\omega_{33} w_{i}+\tau_{z}\right) y_{i}^{\prime}
+\end{array}\right]=\left[\begin{array}{llll}
+\omega_{11} & \omega_{12} & \omega_{13} & \tau_{x} \\
+\omega_{21} & \omega_{22} & \omega_{23} & \tau_{y}
+\end{array}\right]\left[\begin{array}{c}
+u_{i} \\
+v_{i} \\
+w_{i} \\
+1
+\end{array}\right]
+$$
+we can expand this in the form of $Ab=0$:
+$$
+\left[\begin{array}{cccccccccccc}
+u_{1} & v_{1} & w_{1} & 1 & 0 & 0 & 0 & 0 & -u_{1} x_{1}^{\prime} & -v_{1} x_{1}^{\prime} & -w_{1} x_{1}^{\prime} & -x_{1}^{\prime} \\
+0 & 0 & 0 & 0 & u_{1} & v_{1} & w_{1} & 1 & -u_{1} y_{1}^{\prime} & -v_{1} y_{1}^{\prime} & -w_{1} y_{1}^{\prime} & -y_{1}^{\prime} \\
+u_{2} & v_{2} & w_{2} & 1 & 0 & 0 & 0 & 0 & -u_{2} x_{2}^{\prime} & -v_{2} x_{2}^{\prime} & -w_{2} x_{2}^{\prime} & -x_{2}^{\prime} \\
+0 & 0 & 0 & 0 & u_{2} & v_{2} & w_{2} & 1 & -u_{2} y_{2}^{\prime} & -v_{2} y_{2}^{\prime} & -w_{2} y_{2}^{\prime} & -y_{2}^{\prime} \\
+\vdots & \vdots & \vdots & \vdots & \vdots & \vdots & \vdots & \vdots & \vdots & \vdots & \vdots & \vdots \\
+u_{I} & v_{I} & w_{I} & 1 & 0 & 0 & 0 & 0 & -u_{I} x_{I}^{\prime} & -v_{I} x_{I}^{\prime} & -w_{I} x_{I}^{\prime} & -x_{I}^{\prime} \\
+0 & 0 & 0 & 0 & u_{I} & v_{I} & w_{I} & 1 & -u_{I} y_{I}^{\prime} & -v_{I} y_{I}^{\prime} & -w_{I} y_{I}^{\prime} & -y_{I}^{\prime}
+\end{array}\right]\left[\begin{array}{c}
+\omega_{11} \\
+\omega_{12} \\
+\omega_{13} \\
+\tau_{x} \\
+\omega_{22} \\
+\omega_{23} \\
+\tau_{y} \\
+\omega_{31} \\
+\omega_{32} \\
+\omega_{33} \\
+\tau_{z}
+\end{array}\right]=\mathbf{0}
+$$
+this is known as minimum direction problem. We seek $b$ such that it minimize $|Ab|^2$, subject to $|b|=1$ (to avoid $b=0$ solution)
+
+The solution can be found by computing the singular value decomposition $A = ULV^T$ and setting $b$ to be the last column of $V$
+
+- $|b|=1$ means $b$ need to lie on circle/sphere/hypersphere (according to dimension)
+- principle direction problem: seek direction mapped to major axis
+- minimum direction problem: seek direction mapped to minor axis
+- in SVD, $V$ controls the direction mapped to different axis, hence set $b$ as the first/last column of $V$ to solve principle/minimum direction problem.
+
+Note the estimated $\Omega$ has a pre-defined scale. In practice we first find the closest true rotation matrix to $\Omega$, this is called *orthogonal Procrustes problem*. Solution is found by SVD, $\Omega=ULV^T$ and set the true rotation matrix to be $\hat{\Omega}= UV^T$. Then the we rescale the translation $\tau$, which can be estimated by taking the average ratio of the nine entry of the estimated rotation matrix:
+$$
+\hat{\boldsymbol{\tau}}=\sum_{m=1}^{3} \sum_{n=1}^{3} \frac{\hat{\Omega}_{m n}}{\Omega_{m n}} \boldsymbol{\tau}
+$$
+Finally check $\tau_z$ is positive to ensure the projection is in front of the camera, else multiply both $\hat{\tau}$ and $\hat{\Omega}$ by $-1$.
+
+- This result can be quite inaccurate in the presence of noise, but serve as good starting point for non-linear optimization, and need to ensure rotation matrix is still valid.
+- It requires at-least $11$ equations to solve, each point contribute two equations $\rightarrow$ need 6 points for unique solution.
+  - There are really only 6 unknown, rotation and translation in 3D, so minimal solution is $3$ points. (in the notes of end chapter)
+
+> skipped 377
+>
+> - Learning intrinsic parameters 
+
+#### Inferring 3D world points
+
+Using previous equation:
+$$
+\left[\begin{array}{c}
+\left(\omega_{31 j} u+\omega_{32 j} v+\omega_{33 j} w+\tau_{z j}\right) x_{j}^{\prime} \\
+\left(\omega_{31 j} u+\omega_{32 j} v+\omega_{33 j} w+\tau_{z j}\right) y_{j}^{\prime}
+\end{array}\right]=\left[\begin{array}{llll}
+\omega_{11 j} & \omega_{12 j} & \omega_{13 j} & \tau_{x j} \\
+\omega_{21 j} & \omega_{22 j} & \omega_{23 j} & \tau_{y j}
+\end{array}\right]\left[\begin{array}{c}
+u \\
+v \\
+w \\
+1
+\end{array}\right]
+$$
+We can rearrange and get two linear constraint:
+$$
+\left[\begin{array}{lll}
+\omega_{31 j} x_{j}^{\prime}-\omega_{11 j} & \omega_{32 j} x_{j}^{\prime}-\omega_{12 j} & \omega_{33 j} x_{j}^{\prime}-\omega_{13 j} \\
+\omega_{31 j} y_{j}^{\prime}-\omega_{21 j} & \omega_{32 j} y_{j}^{\prime}-\omega_{22 j} & \omega_{33 j} y_{j}^{\prime}-\omega_{23 j}
+\end{array}\right]\left[\begin{array}{c}
+u \\
+v \\
+w
+\end{array}\right]=\left[\begin{array}{c}
+\tau_{x j}-\tau_{z j} x_{j}^{\prime} \\
+\tau_{y j}-\tau_{z j} y_{j}^{\prime}
+\end{array}\right]
+$$
+
+
+- We need to find correspondences in images
+- We need to find intrinsic and extrinsic parameters, actually we can perform reconstruction without calibration, this process is called *projective reconstruction*.
+  - If one camera is used for taking multiple images, we can estimate the single intrinsic matrix and extrinsic parameters from a sequence and reconstruct scene up to a scaling factor. (see chapter 16)
+
+### Application
+
+- Depth from structured light
+  <img src="https://raw.githubusercontent.com/redcxx/note-images/master/2022/04/upgit_20220428_1651153696.png" alt="image-20220428144815108" style="zoom:67%;" />
+
+- Shape from silhouette
+  <img src="https://raw.githubusercontent.com/redcxx/note-images/master/2022/04/upgit_20220428_1651153715.png" alt="image-20220428144834893" style="zoom: 50%;" />
+
+- Novel view generation
+
+  <img src="https://raw.githubusercontent.com/redcxx/note-images/master/2022/04/upgit_20220428_1651153798.png" alt="image-20220428144958308" style="zoom:50%;" />
+
+## Models for transformations
+
+This chapter we consider a pinhole camera viewing a plane in the world.
+
+- Euclidean transformation model describe rigid rotations and translations in the plane
+  - Three parameters
+    - the rotation angle
+    - translations in the x-and y-directions. 
+  - Camera views a fronto-parallel plane at a known distance, the relation between the normalized camera coordinates and the 2D positions on the plane is a Euclidean transformation.
+    <img src="https://raw.githubusercontent.com/redcxx/note-images/master/2022/04/upgit_20220428_1651157272.png" alt="image-20220428154751185" style="zoom:50%;" />
+- Similarity transformation model describe rotations, translations and isotropic scalings
+  - four parameters = Euclidean + scaling (unknown distance)
+  - <img src="https://raw.githubusercontent.com/redcxx/note-images/master/2022/04/upgit_20220428_1651157283.png" alt="image-20220428154803757" style="zoom:50%;" />
+- Affine (linear) transformation describes rotations, translations, scalings and shears
+  - six parameters: similarity + skew in x y direction
+  - <img src="https://raw.githubusercontent.com/redcxx/note-images/master/2022/04/upgit_20220428_1651157296.png" alt="image-20220428154816055" style="zoom:50%;" />
+- Projective transformation (also known as a collinearity or homography)
+  - eight parameters: affine + projective transformation 
+  - lines not constraint to remain parallel, can map any 4 to other 4 points
+  - <img src="https://raw.githubusercontent.com/redcxx/note-images/master/2022/04/upgit_20220428_1651157343.png" alt="image-20220428154903516" style="zoom:50%;" />
+- We can add uncertainty, gaussian noise at image data, transforming the problem into a generative model that estimate position x given world state w with noise
+
+> skipped 401
+>
+> - learning parameters of above transformations
+> - Inference in transformation models
+> - Three geometric problems for planes
+
+### Transformations between images
+
+- position from plane to camera 1 and 2 can be describe by homography, mapping denoted as $T_1$ and $T_2$.
+- then mapping of points from image 1 to image 2 is $T_{1\rightarrow2}=T_2T_1^{-1}$.
+-  the images seen by different cameras with the pinhole in the same place are related by homographies.
+
+homography maps:
+
+- points on a plane in the world and their positions in an image,
+- points in two different images of the same plane, and
+- two images of a 3D object where the camera has rotated but not translated.
+
+> skipped 412
+>
+> - Computing transformations between images
+
+
+
+### Robust learning of transformations
+
+- SIFT 70 − 90%, remaining outliers, not robust
+- we can use Random sample consensus (RANSAC) instead
+  - works by repeatedly fitting models based on random subsets of the data. The hope is that sooner or later, there will be no outliers in the chosen subset, and so we will fit a good model
+  - each subset is assessed using prior information of expected variation around true model
+  - for homography, The size of the subset is chosen to be four as this is the minimum number of pairs of points that are needed to uniquely identify the eight degrees of freedom of the homography
+  - for multiple planes scene, RANSAC does not work well
+    - it is a greedy algorithm that forgets previous plane
+    - it has no notion of spatial coherence, ignores nearby points are more likely to be on the same plane
+    -  Propose, Expand and Re-Learn (PEaRL) solves both problems
+      - propose stage: K (>1000) models generated, each using RANSAC type procedure which uses subset of the points. Repeat until all models have some degree of support.
+      - expand stage: assigned matched pairs to proposed models (as a multi-label markov random field), a label is used such that represents individual model is assigned to each pair
+        - add a prior that encourage neighbor to take similar values
+        - done using alpha expansion algorithm
+      - relearn stage: re-estimate model parameters based on data associated with it
+        - iterate until no further progress
+        - end of this process we throw away model that do not have sufficient support at final solution
+
+## Multiple cameras
+
+Pinhole camera model requires intrinsic and extrinsic parameters, but this is often unknown. Imagine we need to simultaneously establish the properties of the camera and its position in each frame, known as structure from motion, formally: 
+
+Given series of image of projections of points from the same camera, we need to establish the 
+
+- 3d position of points in the world,
+- fixed intrinsic parameters $\Lambda$,
+- and extrinsic parameters
+
+for each image:
+$$
+\begin{aligned}
+\left\{\hat{\mathbf{w}}_{i}\right\}_{i=1}^{I},\left\{\hat{\boldsymbol{\Omega}}_{j}, \hat{\boldsymbol{\tau}}_{j}\right\}_{j=1}^{J}, \hat{\boldsymbol{\Lambda}} \\
+&=\underset{\mathbf{w}, \boldsymbol{\Omega}, \boldsymbol{\tau}, \boldsymbol{\Lambda}}{\operatorname{argmax}}\left[\sum_{i=1}^{I} \sum_{j=1}^{J} \log \left[\operatorname{Pr}\left(\mathbf{x}_{i j} \mid \mathbf{w}_{i}, \boldsymbol{\Lambda}, \boldsymbol{\Omega}_{j}, \boldsymbol{\tau}_{j}\right)\right]\right] \\
+&=\underset{\mathbf{w}, \boldsymbol{\Omega}, \boldsymbol{\tau}, \boldsymbol{\Lambda}}{\operatorname{argmax}}\left[\sum_{i=1}^{I} \sum_{j=1}^{J} \log \left[\operatorname{Norm}_{\mathbf{x}_{i j}}\left[\mathbf{p i n h o l e}\left[\mathbf{w}_{i}, \boldsymbol{\Lambda}, \boldsymbol{\Omega}_{j}, \boldsymbol{\tau}_{j}\right], \sigma^{2} \mathbf{I}\right]\right]\right] .
+\end{aligned}
+$$
+
+### The epipolar constraint
+
+This means for any point in the first image, the corresponding point in the second image is constrained to lie on a line. 
+
+- The ray in 3D projects to a 2D line which is known as an *epipolar line*.
+- the epipolar lines must converge at a single point in the both image planes
+- the image in the second camera of the optical center of the first camera and is known as the epipole
+
+<img src="https://raw.githubusercontent.com/redcxx/note-images/master/2022/04/upgit_20220428_1651174251.png" alt="image-20220428203049928" style="zoom: 67%;" />
+
+### Essential Matrix
+
+formulation of the mathematical constraint between the positions of corresponding points x1 and x2 in two normalized cameras.
+
+> skipped 432
+>
+> - properties
+> - decomposition
+
+### The fundamental matrix
+
+essential matrix + arbitrary intrinsic matrix $\Lambda_1$ and $\Lambda_2$.
+
+> skipped 434
+>
+> - estimation
+> - eight-point algorithm
+
+### Two-view reconstruction pipeline
+
+1. Compute image features. e.g. SIFT detector
+2. Compute feature descriptors. e.g. SIFT descriptor
+3. Find initial matches. e.g. square distance between matches with a threshold
+4. Compute fundamental matrix. Using eight-points algorithm, or better, use RANSAC
+5. Refine matches. match feature with knowledge of the epipolar geometry, i.e. matches need to close to epipolar line
+   - also recompute fundamental matrix based on remaining point
+6. Estimate essential matrix. from the fundamental matrix
+7. Decompose essential matrix. extract estimates of extrinsic parameters between the cameras, providing 4 possible solutions
+8. Estimate 3D points. For each solution, we reconstruct the 3D position of the points using the linear solution. retain the extrinsic parameters where most of the reconstructed points are in front of both cameras
+
+After this we have 
+
+- a set of corresponding points in image 1 and 2
+- estimated 3d points in world positions.
+- estimated extrinsic parameters
+
+Now we optimize the true cost function to refine these estimates, enforcing constraint that $|\tau|=1$ and $\Omega$ is valid rotation matrix.
+
+Above is naive pipeline. e.g. 
+
+- seven point algorithm exists to solve fundamental matrix as it only has 7 dof.
+- five point algorithm exists to solve essential matrix, faster than RANSAC and robust to non-general configuration of scene points.
+
+### Rectification
+
+If we need accurate model, then dense reconstruction is needed to estimate the depth at every point. It typically assume corresponding point lies on the same horizontal scanline
+
+> skipped 441
+>
+> - Planar rectification
+> - Polar rectification
+> -  After rectification
+
+### Multi-view reconstruction
+
+similar to two cameras
+
+- if same camera, then we have sufficient constraints to estimate the intrinsic parameters (auto-calibration)
+- matching points is easier, change between adjacent frame is small
+  - but need keep track of points in frame as some are occluded
+- additional constraints on feature matching, easier to eliminate outliers --- need to retain on multiple epipolar lines
+  - but these multiple lines need to be different
+  - Consequently, the position in the third view is computed in a different way in practice, using a analogue to fundamental matrix called *tri-focal tensor*.
+
+> skipped 447
+>
+> - Bundle adjustment
+
+### Discussion
+
+It is now possible to use these ideas to reconstruct 3D models from camera sequences of rigid objects with well-behaved optical properties.
+
+However, 3D reconstruction in more general cases remains an open research problem
+
+## Models for vision
+
