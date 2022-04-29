@@ -1298,3 +1298,8 @@ However, 3D reconstruction in more general cases remains an open research proble
 
 ## Models for vision
 
+> skipped
+
+## Models for shapes
+
+<img src="https://raw.githubusercontent.com/redcxx/note-images/master/2022/04/upgit_20220429_1651224515.png" alt="image-20220429102833885" style="zoom: 67%;" />
