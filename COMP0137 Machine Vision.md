@@ -640,8 +640,6 @@ However, if the transformed data z is very high-dimensional, we will need corres
 
 ## Classification Models
 
-
-
 > TODO: trees forest boosting
 
 > TODO: dependent variables graphs
@@ -731,7 +729,7 @@ This procedure may be made even more efficient (but more approximate) by choosin
 
 Note that after each classifier is added, the relative importance of each data point is effectively changed: the data points contribute to the derivative according to how well they are currently predicted. Consequently, the later weak classifiers become more specialized to the more difficult parts of the data set that are not well classified by the early ones.
 
-> skipped  195
+> skipped 195
 >
 > - classification tree
 > - Multi-class logistic regression
