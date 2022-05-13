@@ -92,7 +92,7 @@ Factors affecting the transmit time:
 
 - utilization of outgoing link is $p$.
 
-which does not hold on real data network, packet arrivals are bustier (instead of random) and the queue in router is finite, they have some upper bound for delay. But how much memory does  each router needs? (dimension switches' queues). Memory is relative cheap so can we use the worst-case memory size? No, because worst-case is orders of magnitude larger than average, and even if we can queue everything, the user will rather retry or just give up than wait for long time.
+which does not hold on real data network, packet arrivals are bustier (instead of random) and the queue in router is finite, they have some upper bound for delay. But how much memory does each router needs? (dimension switches' queues). Memory is relative cheap so can we use the worst-case memory size? No, because worst-case is orders of magnitude larger than average, and even if we can queue everything, the user will rather retry or just give up than wait for long time.
 
 So we use average sized memory, but what to do when it is full (congestion)? We cannot ask the sender to slow down (send a quench message) because that will generate more traffic and the source may not be sending anything more. So when the queue is full, we just simply drop the packet, and sender will need to resend the packet (if he cares). This implicitly tells the sender that the traffic is congested now (possibility of slowing sender automatically to response to it), and this is what the internet does.
 
@@ -105,7 +105,7 @@ Implications:
 - Packet loss.
 - Duplication: duplicate send because sender did not receive a respond.
 - Unbounded Delay: receiver sent a response but was delayed, so sender send again and received two responses as well, also causes duplication.
-- Noise on links: packet can be corrupted, but error correction is mostly efficient and these packets are dropped.
+- Noise on links: packet can be corrupted, but error correction is mostly efficient and will drop these packets.
 - Links break: packet can be rerouted when failure.
 - Out-of-order delivery: receiver need to reassemble packets.
 
@@ -247,7 +247,7 @@ Base on retransmit, let's develop a scheme by slowly relaxing the following thre
 1. Channel does not corrupt packets
 2. Channel always delivers packets
 3. Channel does not delay or reorder packets
-- If all three assumptions holds, we just send messages one-by-one, end.
+- First of all, if all three assumptions holds, we just send messages one-by-one, done.
 
 - Now if $1$ does not hold:
 
@@ -256,10 +256,12 @@ Base on retransmit, let's develop a scheme by slowly relaxing the following thre
   - Another way is to always resend when in doubt (doubt=NACK received), but now we may receive duplicates if ACK is corrupted.
 
     - We can introduce a 1-bit sequence number to resolve this, if we receive the same sequence bit message, that means we have duplicates so we just discard it. We can also drop NACK message here and use this sequence bit to tell the sender if we have receive the last packet or not (e.g. if we expect sequence 0 but did not receive it, then we send 1 back to the receiver, otherwise 0).
+    
+      - > TODO: If the bit sequence also corrupted, then there is nothing we can do? Rarely happen I suppose
 
 - Now if $2$ does not hold:
 
-  - add a timer, resend when doubt, (doubt = timeout + NACK received).
+  - add a timeout, resend when doubt, (now doubt = timeout or NACK received).
 
 - Now if $3$ does not hold:
 
@@ -303,11 +305,11 @@ So the receiver need to send ACK to sender with the number that the last packet 
 
 - If only packet 2 is lost while sending, then we send ACK 1,1,1, because the the last packet that received in order is 1, and the sender will know 1 is correctly received, followed by 2 other packets, but he does not know which one is lost.
 - If only packet 2's ACK is lost while sending, then we receive ACK 1,3,4, and the receiver will know all packets have been received correctly, because when he received ACK 3, he knows ACK 2 is lost but successfully transmitted.
-- If packet 2 is lost and we received ACK 1 before sending packet 4 and we received another ACK 1, then we know that packet 4 has been successfully transmitted (?). (? what if out-of-order but none lost?)
+- If packet 2 is lost and we received ACK 1 before sending packet 4 and we received another ACK 1, then we know that packet 4 has been successfully transmitted (? what if out-of-order but none lost?)
 
 The sender will need to resend all packets after the last packet that he was acknowledge (timeout / ACK from receiver), hence go back n.
 
-- a timeout timer is started when a packet is sent, and cancelled when its ACK is received.
+- a timeout timer is started when a packet is sent, and canceled when its ACK is received.
 - when a timer expires, go back to it and resend from there.
 
 We can improve efficiency using **fast retransmit**
@@ -369,7 +371,7 @@ Too short leads to frequent retransmissions and too long leads to delay in detec
 #### Size of Nonce Space
 
 - If we use random number then receiver has to store all of them in order to verify whether we have seen the current packet before (we need to drop duplicate!)
-  - We **use cumulative sequence number**, increase monotonically, receiver can drop packets that has been received in order. Although this reduce the problem, we still need to set the sequence space for the number, we come back to this later
+  - We **use cumulative sequence number**, increase monotonically, receiver can drop packets that has been received in order. Although this reduces the problem, we still need to set the sequence space for the number, we come back to this later
 
 #### Preserve data ordering
 
@@ -381,7 +383,7 @@ Too short leads to frequent retransmissions and too long leads to delay in detec
   - **payload** protect against link layer reliability.
   - **transport protocol header** protect header sequence number and payload mismatch.
   - **layer-3 source and destination** protect against delivery to wrong destination.
-- cannot protect against software bugs / router memory corruption, etc..
+- cannot protect against software bugs / router memory corruption, etc...
 - drop when checksum fails.
 
 ### Performance
@@ -499,12 +501,17 @@ For AIMD we have:
 
 #### Performance Analysis (++)
 
-- mean window size = $3W/4$.
+- Assume window size over time looks like: <img src="https://raw.githubusercontent.com/redcxx/note-images/master/2022/05/upgit_20220513_1652464753.png" alt="image-20220513185911889" style="zoom:33%;" />, then mean window size = $3W/4$.
 - mean throughput = mean window size * bits per RTT / RTT = $3BW/4RTT$.
-- packet per cycle = packet/time * total time = $(3W/4)/RTT \times (W RTT / 2) = \frac{3W^2}{8}$.
-- we lost one packet per cycle, loss rate $p=\frac{8}{3W^2}$.
+- we lost one packet per cycle, number of packets we send each cycle  = packet/time * total time = $(3W/4)/RTT \times (W RTT / 2) = \frac{3W^2}{8}$.
+- so loss rate is 1 / packets in a cycle = $p=\frac{8}{3W^2}$.
 - so when we lost one packet every $W=\sqrt{\frac{8}{3p}}$ window size.
-- (++last page)
+- substitute into mean throughput: <img src="https://raw.githubusercontent.com/redcxx/note-images/master/2022/05/upgit_20220513_1652466001.png" alt="image-20220513192001783" style="zoom:33%;" />.
+
+
+
+- Higher RTT, loss reduce throughput
+- At same bottleneck, flow with longer RTT achieves less throughput than flow with shorter RTT!
 
 ## L2 Forwarding
 
@@ -597,7 +604,7 @@ The problem with this approach is that it can creates loops in the network, beca
 
 #### Spanning Tree Protocol (STP)
 
-In this protocol, it defines how can switches build a spanning tree (subgraph that connects all vertices with no loop) in an all connected LAN; with automatically setup and failure repair by exchanging **control-plane** messages.
+In this protocol, it defines how can switches build a spanning tree (subgraph that connects all vertices with no loop) in an all connected LAN; with automatically setup and failure repair by exchanging **control-plane** messages. It builds its tree with following intermediate steps:
 
 1. Find root.
 2. Compute edges (min hops to root).
@@ -611,10 +618,10 @@ In this protocol, it defines how can switches build a spanning tree (subgraph th
 
    - broadcast at the beginning and when received a better message, change own configuration message and broadcast again.
      - Better message if:
-       - smaller root id; 
+       - smaller root id;
        - then shorter distance to root;
        - then lower sender id;
-       - then lower port number.
+       - then lower port number. (broker)
    - configuration message: **(root_id, distance_to_root, sent_from_id)**.
 
 3. Decide which port to block to form the spanning tree.
@@ -656,11 +663,11 @@ Now what about the internet? We have STP that handles small group of nodes well,
 
 We need to add another hierarchy. Lets connect hosts together to form **Local-Area Networks (LANs)** through ethernet, WIFI, etc... Then we add router to each LAN, connecting them to form a **Wide-Area Network (WAN)**, this is the extra layer that transfer packets between LANs, and we need a **internetwork protocol** for them.
 
-Recall within the LAN we have flat MAC addresses, and new in WAN we will have structured IP address, which means address in the same LAN will have address close to each other, IPv4 is a 32-bits number, commonly represented as 4 number (dotted-quad notation, a.b.c.d).
+Recall within the LAN we have flat MAC addresses, and new in WAN we will have structured IP address, which means address in the same LAN will have address close to each other, IPv4 is a 32-bits number, commonly represented as 4 number (dotted-quad notation, a.b.c.d). IP address had three attempts
 
 1. Originally 8-bits network identifier, 24-bits for hosts.
 
-   - assumed 256 networks, not enough
+   - assumed 256 networks, simply not enough
 2. Next we try classful addressing, class A, B, C
 
    1. 0, 7-bits for network, 24-bits for hosts (large block taken by IBM, MIT, HP...)
@@ -670,6 +677,7 @@ Recall within the LAN we have flat MAC addresses, and new in WAN we will have st
 
    - flexible boundary between network and host address (separate by IP mask), result in high address assignment efficiency. Written as network/mask length: 12.4.0.0/15.
    - They are allocated continuously and hierarchically, forwarding based on prefixes.
+   - (I think now we use Ipv6)
 
 ### Tying the Link & Network Layer
 
@@ -691,7 +699,7 @@ The key ideas:
 - cache information for some time: reduce overhead and allow communication
 - soft state: eventually forgets, TTL, refresh/discard, provide robustness to unpredictable change.
   - Client may not release their IP address due to crashes or buggy software.
-    - Short lease time: return inactive addresses quickly; long lease time: avoid overhead of frequent renewal.
+    - Short lease time: return inactive addresses quickly; long lease time: avoid overhead of frequent renewal (trade-off).
 
 #### DHCP
 
@@ -702,7 +710,7 @@ The key ideas:
 3. Client then accepts one of the offers by sending DHCP request.
 4. Server confirms with DHCP ACK.
 
-All four messages are broadcasted:
+All four messages are broad-casted:
 
 - Discover broadcast: client does not know DHCP server's identity.
 - Offer broadcast: client doesn't have an IP address yet.
@@ -776,7 +784,7 @@ Providers tell internet what addresses are accepted, and when a packet with a pa
 
 - host: endpoints running applications, at least one interface
 - router: intermediate system with multiple interface
-- subnet: point-to-point (cable between two routers) or shared LAN where hosts and routers are connected wit their interface.
+- subnet: point-to-point (cable between two routers) or shared LAN where hosts and routers are connected with their interface.
 
 #### Computing the Table
 
@@ -788,7 +796,7 @@ Router build routing table with three entries:
 
 When received a packet, router will find the longest prefix match, if no entry found, the packet is dropped $\rightarrow$ so how do we populate the packet?
 
-(?) Keeps a routing table; Applies LPM to incoming packets --- What is LPM
+Keeps a routing table; Applies LPM (longest prefix match) to incoming packets
 
 - Initialize table for directly connected subnet; cost are minimal as they are connected.
 - Routing protocols add information on remote destinations
@@ -803,17 +811,69 @@ In addition, we have the following requirements for internet:
 - Good performance, possibly both time and space
 - No central knowledge needed (e.g. graph algorithm such as Dijkstra cannot be used)
   - A distributed algorithm is needed for this shortest path problem
+- Changing network
+  - need fast reconvergence
+  - avoid loops
+    - it amplify traffic and leads to congested links
+    - cannot rely on ttl to expire --- too late
+    - possible temporary disconnection
+
 - Automated path computation
 - dealing with failures: coherent with topology, new route when old is disrupted
   - Need fast reconvergence to corrected path
   - Potential loops that amplify traffic and need to wait for TTL expire, but typically too late.
   - Possibly temporarily disconnections.
 
+## Distance Vector Routing Algorithm
+
+Compute shortest path distributed-ly that deals with topological changes.
+
+- Distributed Bellman-Ford (DBF): tell everything you know to your neighbour periodically
+
+When receive an announcement from neighbor that says they got a route for destination $D$, metric $m$ on interface $i$:
+
+1. m += configured metric for interface $i$
+2. route = lookup($D$)
+3. if route not found
+   - create new entry in routing table with destination $D$, metric $m$ and interface $i$
+4. else if m < route.m  // we found better route
+   - route.m = m; route.i = i
+
+- neighbors incorporate announcement and propagate them further
+- eventually converge and all routers will know next-hope for any destination
+
+### Dealing with Failure
+
+But what if we have a failure?
+
+<img src="https://raw.githubusercontent.com/redcxx/note-images/master/2022/05/upgit_20220513_1652479102.png" alt="image-20220513225820143" style="zoom:50%;" />
+
+Let say $D$ use $A$ to route to $B$, but $A$ finds that $B$ got a failure; but when $A$ send announcement to $D$, $D$ will ignores it as it thinks it is not a better route according to the algorithm on top, but there is an easy fix: update to newer metric if it comes from the same interface:
+
+- step 3.5: if route.i == i then route.m = m 
+
+### Dealing with Loop
+
+OK, but what if $B$ found connection to $C$  is broken, but before it can send an announcement, $B$ received an announcement from $A$, saying he got a route to destination $C$? Now $B$ thinks $A$ got a route to $C$, but $A$'s route is actually using $BC$ link which $B$ knows is in failure! Even though $E$ got a route to $C$, after receiving broadcast from $B$ he will thinks that $B$ got a route with low cost, so he will not use that route.
+
+Now, $A$ and $B$ will advertise to each other because they have inconsistent route, leading to long and painful convergence, and  transient forwarding loops, until their metric is higher than the one $E$ has in hand; and if there is no alternative path, it will loop to infinity.
+
+The problem is that $A$ is announcing to $B$ that he got a route to $C$, even though he is using $B$ to route to $C$, he should never do that! We got two approaches:
+
+- Split Horizon: $A$ does not announce to $B$ that he got a route if he is using $B$ for that route
+- Poison Reverse: $A$ announce to $B$ that its distance to $D$ is infinity.
+
+#### Limitation
+
+OK, but what if we have a scenario like:
+
+<img src="https://raw.githubusercontent.com/redcxx/note-images/master/2022/05/upgit_20220513_1652480168.png" alt="image-20220513231608707" style="zoom: 67%;" />
+
+Now $E$ found that $ED$ is broken, he sends announcement to $B$ but not yet reach $C$, now, $B$ updates its table, but then he received announcement from $C$ that $C$ got a path to $D$ ($C$ have not updated), then $B$ is happy and updates its table, and advertise its table, now we got infinity loop again!
+
+> Fuck, what's next? Why no slides
 
 
-
-
-(?x2) link failure
 
 ## Miscellanies
 
