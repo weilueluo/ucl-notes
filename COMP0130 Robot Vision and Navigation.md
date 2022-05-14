@@ -27,7 +27,8 @@
 
 
 - bearing: bearing: angle of the horizontal plane between two line-of-sight to an object and known direction (magnetic north).
-- 
+
+  
 
 
 

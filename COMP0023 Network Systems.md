@@ -871,9 +871,11 @@ OK, but what if we have a scenario like:
 
 Now $E$ found that $ED$ is broken, he sends announcement to $B$ but not yet reach $C$, now, $B$ updates its table, but then he received announcement from $C$ that $C$ got a path to $D$ ($C$ have not updated), then $B$ is happy and updates its table, and advertise its table, now we got infinity loop again!
 
-> Fuck, what's next? Why no slides
+> Fuck, what's next?
 
+## Inter-domain Routing
 
+Each domain is called an autonomous system (AS), each known by a unique 32 bits address, each owning a handful of IP prefixes.  They are assigned by Regional Internet Registries (RIR) and owned by IANA.
 
 ## Miscellanies
 
