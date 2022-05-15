@@ -762,7 +762,7 @@ Things to consider:
 - what if router is confused?
   - router can be confused when there is a loop in the route:
     <img src="https://raw.githubusercontent.com/redcxx/note-images/master/2022/03/upgit_20220312_1647099068.png" alt="image-20220312153107266" style="zoom: 50%;" />
-  - The solution is to add a counter (time-to-live TTL) in the packet header, and decrease by one at each counter, drop when reaches zero; and send time-exceeded message back to source.
+  - The solution is to add a counter (time-to-live TTL) in the packet header, and decrease by one at each counter, drop when reaches zero; and send time-exceeded control message (ICMP) back to source.
 - order/importance of different packets?
   - packets will need to queue when too many packets arrive at a router, it is easy to add a priority in the header but it is hard to prioritize them, this is a business/money thing, and hard to decide who to pay when packets traverse through multiple network.
 
