@@ -828,7 +828,9 @@ In addition, we have the following requirements for internet:
 
 Compute shortest path distributed-ly that deals with topological changes.
 
-- Distributed Bellman-Ford (DBF): tell everything you know to your neighbour periodically
+- Distributed Bellman-Ford (DBF)
+
+Tell everything you know to your neighbour periodically
 
 When receive an announcement from neighbor that says they got a route for destination $D$, metric $m$ on interface $i$:
 
@@ -863,7 +865,7 @@ The problem is that $A$ is announcing to $B$ that he got a route to $C$, even th
 - Split Horizon: $A$ does not announce to $B$ that he got a route if he is using $B$ for that route
 - Poison Reverse: $A$ announce to $B$ that its distance to $D$ is infinity.
 
-#### Limitation
+### Limitation
 
 OK, but what if we have a scenario like:
 
@@ -873,9 +875,271 @@ Now $E$ found that $ED$ is broken, he sends announcement to $B$ but not yet reac
 
 > Fuck, what's next?
 
+## Link State Routing
+
+tell everybody what you know about your neighbourhood, flood local information network wide, by saying hello periodially $P$. Each hello packet contains sender id and list of neighbours which sender heard hello during period $D$, (e.g. $D=3P$). A adjacencies table of any two routers is built, up if they are hello-ed to each other, else down
+
+- a Link State Advertisement (LSA) is sent to all neighbours when local change detected
+- all LS router runs Flooding Protocol to bounce news.
+- each LSA contains 
+  - ID of the advertising router
+  - sequence number
+  - local link information: id and metric
+  - message parameters: LS age, type, etc.
+- received LSAs are stored in Link-State database, flood its information to others when updated
+
+Its pseudo code are as follows:
+
+1. if link not in database or LSA seq no. > stored seq no.
+   1. store LSA in databse
+   2. send LSA to all interfaces except the received interface
+2. elif LSA seq no. < stored seq no.    // out of date, update neighbor instead
+   1. send the stored LSA back to incoming interface
+3. else:
+   1. ignore LSA   // we already heard it
+
+### Counting to infinity?
+
+No, it does not count to infinity
+
+### Tricky Case
+
+Now if we have a network like this:
+
+<img src="https://raw.githubusercontent.com/redcxx/note-images/master/2022/05/upgit_20220515_1652655214.png" alt="image-20220515235332895" style="zoom:50%;" />
+
+Suddenly, $DE$ healed and $BC$ shutdown almost the same time, now, if $DE$ has been up in the past, then $D$ may still have the old cache that $BC$ is linked! He was not updated because $DE$ failed, and from $B$ and $C$ perspective they already updated their neighbour, so they will not update again.
+
+but good news is that we can solve this by setting a timer to periodically update neighbour even though the database information did not change: OSPF sends new LSAs every 30 mins, even for unmodified links, but this is a trade-off: sent often means overhead and less often means too slow for update. The root case for this is flooding is not always efficient!
+
+So the actual solution is: routers exchange LS database summaries when they form new adjacencies.
+
+Now each router run a dijkstra algorithm locally to find the shortest path
+
+- polynomial time
+- $O((|V| + |E|) log2 |V|)$ or $O(|E| log2 |V|) $ when all vertices are reachable
+  - Note most network are sparse so: $– |E| << |V|^2$ which means dijkstra algorithm is almost linear.
+
+## Distance Vector VS Link State
+
+Link State vs. Distance Vector
+
+- LS generally scales and performs better than DV 
+  - no routing bouncing and counting to infinity, hence, faster convergence after topology changes
+- However, LS is more complex to implement than DV – LSAs’ sequence numbers crucial to protect against stale announcements
+  - adjacencies have to be established and maintained
+  - link state database + flooding are needed
+- Flooding status of all links seems costly, but actually reasonable for tens and tens of routers
+  - vanilla LS doesn’t scale indefinitely. e.g., for thousands of nodes – yet, scalability can be improved with hierarchy 
+- In practice, LS is more popular than DV – LS is more commonly used, especially in large (ISP) networks, where routing is critical
+  - Use of DV is more niche • “small” enterprise networks, wireless ad-hoc ones, ...
+
+### Real World is Complex
+
+LS does not solve all problems, e.g. transient loops during convergence. But its connectivity is of utmost importance: it is money! It attracted many industrial and research efforts. E.g. loop-free alternate (LFA) and its variants and progressive metric increment
+
+Network has many more requirements e.g. 
+
+- avoid congestion
+- enforce firewall traversal
+- additional protocols e.g. MPLS
+- traffic engineering systems may want to have routing on non-shortest paths
+
+Big players like google and microsoft starts to develop their own routing systems e.g. Google B4, Microsoft SWAN and Google BwE.
+
 ## Inter-domain Routing
 
-Each domain is called an autonomous system (AS), each known by a unique 32 bits address, each owning a handful of IP prefixes.  They are assigned by Regional Internet Registries (RIR) and owned by IANA.
+Each domain is called an autonomous system (AS), each known by a unique 32 bits address, each owning a handful of IP prefixes.  They are assigned by Regional Internet Registries (RIR) and owned by IANA. There are about 70,000 domains as of Sep 2020 (see www.cidr-report.org)
+
+- Each AS cooperate to find optimal paths is not possible
+- Each ISP interconnected equally is also little correspondence in reality
+- In reality: ISPs have tiers, worldwide then regional... Routing follows money! Support per-AS policies
+  - Basic model: customer-provider, pay for connectivity. Or Peering, two ISPs forward own traffic to each other, no exchange of money
+  - Peer offer better performance and attract customers
+    - Tier-1 ISP must peer to build compute global routing tables!
+  - But Peering does not let ISP charge everybody, and need to agree on asymmetric traffic loads
+    - Nobody knows how traffic patterns will change after establish a new peering
+
+So, DV and LS are Interior Gateway Protocols (IGPs) that only runs within a single AS!
+
+## Border Gateway Protocol (BGP)
+
+Goals:
+
+- Scalability: unique IP, no consult to central authority
+  - Routers track networks / IP prefixes not hosts, IP is assigned hierarchically most of the time
+  - \>70k ASes and >800k announced prefixes
+- Enforce policies not optimal performance!
+  - ASes are competitors and routing must reflect commercial agreements
+  - Need to cooperate but under competitive pressure
+    - BGP designed to run on successor to NSFnet, the former single, government-run backbone
+
+The problem with Inter-domain protocols is:
+
+- insufficient scalability – DV and LS cannot scale to Internet routing
+  - prohibitive cost for LS flooding
+  - loops and slow convergence for DV
+- No support for policies
+  - cannot reflect commercial agreements using DV and LS which compute shortest paths 
+
+So, BGP! An Exterior Gateway Protocol (EGP) that computes paths spanning multiple ASes
+
+- It is the de-facto inter-domain routing protocol which allows to route between ASes, with policies
+- It is additional and complementary to intra-domain routing
+
+> ++
+
+- Customer routes (remunerative) > peer routes (neutral) > provider routes (cost)
+
+> ++
+
+### Protocol
+
+It is **stateful** and **connection-based**, between routers. Runs over **TCP** port 179, because it provides reliable delivery and no need for periodic re-announcement of the same routes.
+
+It is to enable reachability and supprting policies
+
+1. connects by sending a OPEN message
+2. upon new connection, exchange all active routes in their tables
+   - can takes minutes, depending on size and implementation
+3. they send two main types of messages
+   1. announcement: new/update route
+      - contains attributes that describe characteristics of announced route: to support policies, based on them, routers can:
+        1. avoid inter-domain loops
+        2. apply custom route filtering and ranking
+        3. influence other routers' decisions
+      - human operators need to configure these routers so that they implement the intended policies, which is challenging and error-proneDD
+   2. withdrawals: retraction of previous route
+      - only include IP prefix
+
+Internals of a BGP router
+
+<img src="https://raw.githubusercontent.com/redcxx/note-images/master/2022/05/upgit_20220516_1652657968.png" alt="image-20220516003928199" style="zoom:50%;" />
+
+### BGP decision process
+
+<img src="https://raw.githubusercontent.com/redcxx/note-images/master/2022/05/upgit_20220516_1652657986.png" alt="image-20220516003946871" style="zoom:50%;" />
+
+- **Local preference** is a numerical value with local meaning. All BGP routers compare LP across known routes for same destination, can be used to reflect commercial relationships
+
+  - typically, LP for customer routes > LP for peer routes > LP for provider routes
+
+- **AS-PATH**: BGP is a Path-Vector Protocol, 
+
+  - announcement contains full list of AS numbers along the path to prevent inter-domain forwarding loops (discard route if own AS number (ASN) is in the AS-PATH)
+  - it is the first tie-breaker after LP, among routes with min LP, prefer shortest AS-PATH
+
+- **Origin**: Prefer IGP-Originated Routes
+
+  - Usage: mostly historical
+
+  - Origin indicates how BGP learned about the route
+
+    - IGP: route interior to the originating AS
+    - EGP: originated via the (obsolete) EGP protocol
+    - Incomplete: unknown or learned some other way
+
+    fixed preference: IGP > EGP > incomplete
+
+- **Multi-Exit Discriminator (MED)**: Choose between Multiple Exit Points
+
+  - Tier-1 and Tier-2 ISPs often span differen geographic regions, with same LP and AS-PATH
+  - One AS may prefer a particular transit point to save money
+  - It is used  is used to express transit point preferences
+
+  One AS can use MED as advertisement to other AS
+
+  - MED is an interger cost and router should choose the lowest MED advertised
+  - other AS do not need to honor it, unless motivated by some financial settlement
+  - often prefer shortest-exit routing: get packet onto someone else backbone as quickly as possible, and result in highly asymmetric route.
+
+Actually BGP is two protocols
+
+- eBGP: external BGP advertise routes between ASes
+  - routes from AS neighbours
+- iBGP: internal BGP propagates external routes inside a single AS
+  - routes from iBGP routers in the same AS
+
+Each router shares its best route internally to its own AS, select the best route, if best route is eBGP, then disseminates (传播) in iBGP.
+
+#### iBGP
+
+It selects the egress 出口 points. Its goal is to:
+
+- ensure visibility: each router in AS must get at least one of the best eBGP routes: an eBGP route surviving all tie-breakers explained so far (?)
+- loop-free forwarding
+
+**Full-mesh**
+
+- each router floods selected eBGP routes to all other iBGP routers
+- Flooding done over TCP, using intra-AS paths provided by IGP, this is different from LS flooding!
+
+Each router pushes all its best routes learned via eBGP to all iBGP routers 
+
+Internal routers know all the best eBGP routes
+
+- Pro: simple 
+- Con: scales badly wrt number r of routers iBGP connections: O(r^2)
+
+more scalable iBGP configurations are route reflection, and iBGP confederation
+
+<img src="https://raw.githubusercontent.com/redcxx/note-images/master/2022/05/upgit_20220516_1652659153.png" alt="image-20220516005912909" style="zoom:50%;" />
+
+> ++ Routers combine IGP and BGP tables
+
+### Final Remarks
+
+- Tier-1 ISPs have no connectivity provider. Hence, all tier-1 ISPs must peer with one another 
+- The Internet tier-1 is a full mesh of (eBGP) connections
+  - True tier-1 ISPs do not pay for peering, and do not buy transit from anyone
+  - A few other large ISPs peer with all tier-1 ISPs but pay settlements to one or more of them
+
+- For Internet to be connected, all ISPs who do not buy transit service must be connected in full mesh!
+
+<img src="https://raw.githubusercontent.com/redcxx/note-images/master/2022/05/upgit_20220516_1652659549.png" alt="image-20220516010549843" style="zoom:50%;" />
+
+ISP with no transit provider as of 2015
+
+<img src="https://raw.githubusercontent.com/redcxx/note-images/master/2022/05/upgit_20220516_1652659399.png" alt="image-20220516010319736" style="zoom:50%;" />
+
+- 10/2005: Level 3 de-peered Cogent
+- 3/2008: Telia de-peered Cogent
+- 10/2008: Sprint de-peered Cogent
+  - –lasted from 30th October – 2nd November, 2008
+  - 3.3% of IP prefixes in global Internet behind one ISP partitioned from other, including: NASA, Maryland Dept. of Trans., New York Court System, 128 educational institutions, Pfizer, Merck, Northup Grumman, ...
+
+
+
+- Inter-domain routing chiefly concerned with policy
+  - Economic motivation: cost of carrying traffic
+  - Different relationships demand different routing: customer-provider vs. peering 
+- BGP: stateful, path-vector routing protocol
+  - Scalable in number of ASes
+  - Route attributes support policy routing
+  - Loop-free at AS level
+  - Shortest AS-PATHs preferred, after policy enforced
+
+Reality is more complex!
+
+- Inter-domain policies can be more than customer-provider and peering, e.g. regional transit, or extra tier-I resilience
+- BGP is powerful enough to support more policies than the ones we have discussed, can bypass some decision process
+- hard to configure
+- arbitrary policies?
+  - slower path exploration
+    - Some destination dies, all ASes lose direct path and switch to londer paths, eventually withdrawn
+  - Outages
+    - <img src="https://raw.githubusercontent.com/redcxx/note-images/master/2022/05/upgit_20220516_1652659876.png" alt="image-20220516011116412" style="zoom: 80%;" />
+
+> dyn.com/blog/widespread-impact-caused-by-level-3-bgp-route-leak/
+
+BGP itself is far from perfect
+
+- Long convergence after failures
+  - distributed computation of best policies-compatible routes -> many interactions between many routers 
+- No native security
+  - e.g., BGP hijacking: malicious AS can pretend to own prefixes of other ASes, to blackhole/intercept traffic
+- Overlooks performance metrics and QoS
+  - real problem for content providers: e.g., Google espresso [2017], FB edge fabric [2017], ...
 
 ## Miscellanies
 
