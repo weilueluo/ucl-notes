@@ -1130,23 +1130,24 @@ $$
 
 This chapter we consider a pinhole camera viewing a plane in the world.
 
-- Euclidean transformation model describe rigid rotations and translations in the plane
+- **Euclidean transformation** model describe rigid rotations and translations in the plane
   - Three parameters
     - the rotation angle
     - translations in the x-and y-directions. 
   - Camera views a fronto-parallel plane at a known distance, the relation between the normalized camera coordinates and the 2D positions on the plane is a Euclidean transformation.
-    <img src="https://raw.githubusercontent.com/redcxx/note-images/master/2022/04/upgit_20220428_1651157272.png" alt="image-20220428154751185" style="zoom:50%;" />
-- Similarity transformation model describe rotations, translations and isotropic scalings
+  - <img src="https://raw.githubusercontent.com/redcxx/note-images/master/2022/04/upgit_20220428_1651157272.png" alt="image-20220428154751185" style="zoom:50%;" />
+- **Similarity transformation** model describe rotations, translations and isotropic scalings
   - four parameters = Euclidean + scaling (unknown distance)
   - <img src="https://raw.githubusercontent.com/redcxx/note-images/master/2022/04/upgit_20220428_1651157283.png" alt="image-20220428154803757" style="zoom:50%;" />
-- Affine (linear) transformation describes rotations, translations, scalings and shears
+- **Affine (linear) transformation** describes rotations, translations, scalings and shears
   - six parameters: similarity + skew in x y direction
   - <img src="https://raw.githubusercontent.com/redcxx/note-images/master/2022/04/upgit_20220428_1651157296.png" alt="image-20220428154816055" style="zoom:50%;" />
-- Projective transformation (also known as a collinearity or homography)
+- **Projective transformation** (also known as a collinearity or homography)
   - eight parameters: affine + projective transformation 
   - lines not constraint to remain parallel, can map any 4 to other 4 points
   - <img src="https://raw.githubusercontent.com/redcxx/note-images/master/2022/04/upgit_20220428_1651157343.png" alt="image-20220428154903516" style="zoom:50%;" />
 - We can add uncertainty, gaussian noise at image data, transforming the problem into a generative model that estimate position x given world state w with noise
+- There is also **3D rigid**, which is a more general transformation in 3D.
 
 > skipped 401
 >

@@ -244,25 +244,185 @@ Area under curve (AUC) closer to 1 = better
 
 ### Linear
 
+For grayscale image, we can use linear transformation as contrast stretch
+
+-  $f(x)=\alpha x+\beta$
+- I think $\alpha$ is like contrast and $\beta$ is like brightness.
+
+A function $L$ is linear operation if:
+$$
+L\left(\alpha I_{1}+\beta I_{2}\right)=\alpha L\left(I_{1}\right)+\beta L\left(I_{2}\right)
+$$
+
+- i.e. additive and homogeneous
+
+| <img src="C:/Users/etsun/AppData/Roaming/Typora/typora-user-images/image-20220518105135848.png" alt="image-20220518105135848" style="zoom:50%;" /> | <img src="https://raw.githubusercontent.com/redcxx/note-images/master/2022/05/upgit_20220518_1652867518.png" alt="image-20220518105157980" style="zoom:50%;" /> |
+| ------------------------------------------------------------ | ------------------------------------------------------------ |
+| <img src="https://raw.githubusercontent.com/redcxx/note-images/master/2022/05/upgit_20220518_1652867536.png" alt="image-20220518105216819" style="zoom:50%;" /> | <img src="https://raw.githubusercontent.com/redcxx/note-images/master/2022/05/upgit_20220518_1652867553.png" alt="image-20220518105232989" style="zoom:50%;" /> |
+
+
+
 ### Non-linear
+
+For grayscale image, this can be used for gamma correction (corrects luminance)
+
+- $f(x)=A x^{\gamma}$.
+  - where $A=255^{1-\gamma}$.
+  - $\gamma < 1$ encoding gamma / gamma compression.
+  - $\gamma > 1$ decoding gamma / gamma expansion.
+
+| <img src="https://raw.githubusercontent.com/redcxx/note-images/master/2022/05/upgit_20220518_1652867610.png" alt="image-20220518105329958" style="zoom:50%;" /> | <img src="https://raw.githubusercontent.com/redcxx/note-images/master/2022/05/upgit_20220518_1652867623.png" alt="image-20220518105343615" style="zoom:50%;" /> | <img src="https://raw.githubusercontent.com/redcxx/note-images/master/2022/05/upgit_20220518_1652867662.png" alt="image-20220518105422103" style="zoom:50%;" /> | <img src="https://raw.githubusercontent.com/redcxx/note-images/master/2022/05/upgit_20220518_1652867691.png" alt="image-20220518105451863" style="zoom:50%;" /> |
+| ------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ |
+
+
 
 ### Histogram
 
+We can apply histogram equalization by ensuring all values are used equally often:
+$$
+h(v)=\operatorname{round}\left(\frac{c d f(v)-c d f_{\min }}{(M \times N)-c d f_{\min }} \times(L-1)\right)
+$$
+
+- $M$ and $N$ are the image dimensions
+- $cdf_{min}$ is the minimum non-zero value of the cumulative distribution function ($n$ pixels against each grayscale)
+- $L$ is the number of gray level used
+
+<img src="https://raw.githubusercontent.com/redcxx/note-images/master/2022/05/upgit_20220518_1652867456.png" alt="image-20220518105054521" style="zoom:50%;" />
+
+
+
 ### Affine
 
-### Interpolation
+$$
+x^{\prime}=a x+b y+t_{x}\\
+y^{\prime}=c x+d y+t_{y}\\
+\left(\begin{array}{l}x^{\prime} \\ y^{\prime}\end{array}\right)=\left(\begin{array}{ll}a & b \\ c & d\end{array}\right)\left(\begin{array}{l}x^{\prime} \\ y^{\prime}\end{array}\right)+\left(\begin{array}{l}t_{x} \\ t_{y}\end{array}\right)
+$$
 
-### Warping
+linear transformation: translate, scale, sheer, and rotate.
+
+```python
+def warp_image(im, transform):
+    inv_trans = inverse(transform)  # always use inverse transformation
+    out = zeros_like(im)
+    for x, y in out.pixels:
+        out[x, y] = im[inv_trans(x, y)]
+    return out
+```
+
+Note the `inv_trans` may not result in integer coordinate, we need to do some intepolation
+
+<img src="https://raw.githubusercontent.com/redcxx/note-images/master/2022/05/upgit_20220518_1652869027.png" alt="image-20220518111707882" style="zoom:50%;" />
+
+### Polynomial Warp
+
+We may also want to use quadratic transformation, which allows us to bend lines in the images.
+$$
+x^{\prime}=a_{0}+a_{1} x+a_{2} y+a_{3} x^{2}+a_{4} x y+a_{5} y^{2}\\
+y^{\prime}=b_{0}+b_{1} x+b_{2} y+b_{3} x^{2}+b_{4} x y+b_{5} y^{2}
+$$
+<img src="https://raw.githubusercontent.com/redcxx/note-images/master/2022/05/upgit_20220518_1652869184.png" alt="image-20220518111944712" style="zoom:50%;" />
+
+### Controlled Point Warp
+
+It is pretty hard to define a correct quadratic transformation, however, we can move some points to specific locations, interpolate the displacement at intermediate positions and generate a polynomial warp.
+$$
+\begin{gathered}
+\left(\begin{array}{cc}
+x_{1}^{\prime} & y_{1}^{\prime} \\
+x_{2}^{\prime} & y_{2}^{\prime} \\
+\vdots & \vdots \\
+x_{m}^{\prime} & y_{m}^{\prime}
+\end{array}\right)=\left(\begin{array}{cccccc}
+1 & x_{1} & y_{1} & x_{1}^{2} & x_{1} y_{1} & y_{1}^{2} \\
+1 & x_{2} & y_{2} & x_{2}^{2} & x_{2} y_{2} & y_{2}^{2} \\
+\vdots & \vdots & \vdots & \vdots & \vdots & \vdots \\
+1 & x_{m} & y_{m} & x_{m}^{2} & x_{m} y_{m} & y_{1}^{2}
+\end{array}\right)\left(\begin{array}{ccc}
+a_{0} & b_{0} \\
+a_{1} & b_{1} \\
+a_{2} & b_{2} \\
+a_{3} & b_{3} \\
+a_{4} & b_{4} \\
+a_{5} & b_{5}
+\end{array}\right) \\
+A=X P
+\end{gathered}
+$$
+Least squares estimate of $P$ is $(m \geq 6)$:
+$$
+P=\left(X^{T} X\right)^{-1} X^{T} A
+$$
+
+#### Applications
+
+- Special effects
+  - Film industry
+  - Computer games
+- Image registration (transform different sets of data into one coordinate system, e.g. aligning image with translation and rotation)
+  - Medical imaging
+  - Security
 
 ### Morphing
 
+For face morphing:
+
+1. Find correspondences, i.e. corresponding face landmarks.
+   - (Optional) Add additional correspondences at image corners / edges.
+2. Triangulate.
+3. Generate intermediate triangles at different time $t$.
+4. For each pair of triangles for each intermediate frame
+   1. Calculate the transformation (inverse)
+   2. Apply the affine warp transformation to generate in-between images
+
 ## Filtering
+
+- It is a technique for modifying or enhancing an image. 
+- It is a low-level (pixel) processing operations
+- Filter: let intensity through selectively
+
+Uses:
+
+- Noise reduction
+- Smoothing
+- Feature enhancement
+
+
 
 ### Spatial
 
 #### Convolution
 
+Apply a kernel $K$ to the image repeatedly
+$$
+\begin{aligned}
+I^{\prime}(x, y) &=\sum_{i=-a}^{a} \sum_{j=-b}^{b} K(i, j) I(x-i, y-j) \\
+&=\sum_{i=-a}^{a} \sum_{j=-b}^{b} K(-i,-j) I(x+i, y+j)
+\end{aligned}
+$$
+
+$$
+K(i, j)=K(-i,-j) \quad \Leftrightarrow \quad \text {convolution } \equiv \text { correlation}
+$$
+
+Correlation is convolution with kernel rotated by 180 degree. This makes no difference if the kernel is symmetric like Gaussian and Laplacian, but not kernel like derivative. Convolution is just multiplication in frequency domain, which is generally associative, which allows for pre-convolving and save computation. Correlation however, is multiple with complex conjugate in frequency domain, which is not associative.
+
 #### Smoothing
+
+> low-pass filter
+
+like Gaussian kernel, Box kernel
+
+Gaussian kernel is separable, which means we can e.g. separate a (3x3) Gaussian kernel into two (1x3 and 3x1) Gaussian kernel, performing two convolution to achieve the same effect as the original kernel. The benefit is that we can reduce computation
+
+> TODO: add gaussian kernel formula
+
+- Advantages
+  - Rotationally symmetric
+  - Has a single lobe/mode - Neighbour's influence decreases monotonically
+  - Still one lobe in frequency domain - No corruption from high frequencies
+  - Simple relationship to σ
+  - Easy to implement efficiently
 
 #### Derivative
 
