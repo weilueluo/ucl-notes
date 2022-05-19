@@ -409,7 +409,7 @@ Correlation is convolution with kernel rotated by 180 degree. This makes no diff
 
 #### Smoothing
 
-> low-pass filter
+> low-pass filter, summing, integration
 
 like Gaussian kernel, Box kernel
 
@@ -426,11 +426,81 @@ Gaussian kernel is separable, which means we can e.g. separate a (3x3) Gaussian 
 
 #### Derivative
 
+> related to sharping, accentuate the slope
+
+Differential filters includes:
+
+- Sharping
+
+  - Look ahead
+    $$
+    \frac{\partial f}{\partial x}=f(x+1)-f(x)
+    $$
+    
+  - Look back and ahead
+    $$
+    \frac{\partial^{2} f}{\partial x}=f(x+1)+f(x-1)-2 f(x)
+    $$
+  
+- Prewitt operator
+  $$
+  \left[\begin{array}{lll}
+  -1 & 0 & 1 \\
+  -1 & 0 & 1 \\
+  -1 & 0 & 1
+  \end{array}\right]
+  $$
+
+- Sobel operator
+  $$
+  \left[\begin{array}{lll}
+  -1 & 0 & 1 \\
+  -2 & 0 & 2 \\
+  -1 & 0 & 1
+  \end{array}\right]
+  $$
+
+Convert first derivative to 2D:
+
+Gradient is **anisotropic**, different values on different directions, and we calculate the magnitude as:
+$$
+\operatorname{mag}(\nabla f)=\sqrt{g_{x}^{2}+g_{y}^{2}}
+$$
+Why not absolute mean? No idea man. Just think of this as Pythagoras theorem.
+
+For orientation:
+$$
+\theta=\tan ^{-1}\left[\frac{g_{y}}{g_{x}}\right]
+$$
+Convert second derivative to 2D:
+$$
+\nabla^{2} f=\frac{\partial^{2} f}{\partial x^{2}}+\frac{\partial^{2} f}{\partial y^{2}}
+$$
+<img src="https://raw.githubusercontent.com/redcxx/note-images/master/2022/05/upgit_20220518_1652880374.png" alt="image-20220518142613077" style="zoom:50%;" />
+
+#### Sharpening
+
+> also known as enhancement
+
+Typically, $I'=I+\alpha\Delta^2I$, which means image + its gradient, the higher the gradient (contrast), the higher the value we add to the image, so increase the contrast even further.
+
 #### Laplacian of Gaussian
+
+> TODO: ++
 
 ### Frequency
 
 #### Fourier Transform
+
+Represents image as weighted sum of frequencies. Some operations like convolution is simpler (becomes just multiplication) in frequency domain.
+
+> TODO: 
+>
+> - convert to frequency domain, fourier transform and its inverse
+> - discrete fourier transform DFT and IDFT
+> - FFT (N^4 -> N2logN) and FFTW
+> - week4_Fourier.pdf
+> - week4_Convolution.pdf
 
 #### Magnitude & Phase
 
@@ -438,35 +508,176 @@ Gaussian kernel is separable, which means we can e.g. separate a (3x3) Gaussian 
 
 #### Image Spectra
 
+Magnitude spectra of all natural images is quite similar --- heavy on low frequency, fall off at high frequency, phase carry more information (not quite clear why).
+
 #### Convolution Theorem
+
+To convolve image $f$ by kernel $G$ in frequency domain:
+
+1. Compute DFTs F and G of f and g
+2. Multiply F by G
+3. Compute the inverse DFT of FG
+
+#### Rank Filter
+
+Non-linear filters based on the ordering of the grey levels in the neighbourhood
+
+- Max filter
+  <img src="https://raw.githubusercontent.com/redcxx/note-images/master/2022/05/upgit_20220518_1652882434.png" alt="image-20220518150032988" style="zoom:50%;" />
+- Min filter
+  <img src="https://raw.githubusercontent.com/redcxx/note-images/master/2022/05/upgit_20220518_1652882457.png" alt="image-20220518150057440" style="zoom:50%;" />
+- Median filter
+  <img src="https://raw.githubusercontent.com/redcxx/note-images/master/2022/05/upgit_20220518_1652882478.png" alt="image-20220518150118586" style="zoom:50%;" />
+- Range filter
+  <img src="https://raw.githubusercontent.com/redcxx/note-images/master/2022/05/upgit_20220518_1652882500.png" alt="image-20220518150140192" style="zoom:50%;" />
 
 ## Sampling / Image Pyramids / Blending
 
-### Sampling & Aliasing
+### Anti-aliasing
 
-### Gaussian Pyramid
+To prevent aliasing, we need to have sampling frequency more than twice the signal frequency.
 
-### Laplacian Pyramid
+1. Raise the sampling frequency
+2. Lower the image frequency (using low pass filter)
+3. Use a better sampling method (e.g. stratified sampling)
+
+### Subsampling
+
+How to reduce size of image:
+
+- Throw away every other row / column will result in aliasing
+- Gaussian pre-filtering
+
+### Gaussian / Laplacian Pyramid
+
+- In computer graphics, it is a mip map
+- A precursor to wavelet transform
+- First introduced for compression purposes
 
 ### Blending
 
+> ??
+
 ## Edge Detection
 
-### Gradient
+1. Smoothing to remove noise
+   - Gaussian / Box filter
+2. Detect edge points (candidates) 
+   - Naive `[-1, 1]`
+   - Sobel `[-2, 0, 2]`
+   - Prewitt `[-1, 0, 1]`
+   - Robert's Cross `[[1, 0] [0, -1]]`
+3. Edge localization
+   1. Non-mamixa suppression
+   2. Double thresholding
 
-### Edge Map
+> Not much to say...
+
+- Canny Edge Detector
+  1. Smooth input image with Gaussian
+  2. Compute gradient image
+  3. Apply non-maximal suppression
+  4. Double thresholding (only accept a range)
+- Marr-Hildreth Edge Detector
+  1. Convolve with second derivative operator 
+     - Laplacian of Gaussian
+       - Can be approximated by difference of two Gaussians (DoG)
+  2. Find zero crossings
+  3. Sensitive to noise.
+
+
+
+- Model Fitting
 
 ### Laplacian / Difference of Gaussian
+
+> TODO: ++ LoG and DoG Filters
 
 ### Laplacian Zero Crossing
 
 ### Hough Transform
+
+A feature extraction techniques used in image analysis, finding imperfect instances and vote.
+
+> TODO: ++
+
+### Comparison
+
+- First-derivative approach
+  - Fast, simple to implement and understand
+  - Noise sensitive, misses corners, lots of thresholds to select
+- Second-derivative approach 
+  - Few thresholds to choose, fast
+  - Very sensitive to noise
+- Model fitting
+  - Slow
+  - Less sensitive to noise
+
+> TODO:
+>
+> - The Laplacian Pyramid as a Compact Image Code
+> - A Multiresolution Spline With Application to Image Mosaics
 
 ## Corner Detection
 
 ### Auto Correlation
 
 ### Harris Corner Detection
+
+- Gradient of different direction can be used to determine flat, edge and corners
+
+- Compute a second moment matrix
+
+  - For axis align corner
+    $$
+    M=\left[\begin{array}{cc}
+    \sum I_{x}^{2} & \sum I_{x} I_{y} \\
+    \sum I_{x} I_{y} & \sum I_{y}^{2}
+    \end{array}\right]=\left[\begin{array}{ll}
+    \lambda_{1} & 0 \\
+    0 & \lambda_{2}
+    \end{array}\right]
+    $$
+
+    - So if either $\lambda$ is close to zero, it is not a corner
+
+  - M captures the curvature of the local autocorrelation surface 
+
+  - The eigenvalues $\lambda$ of $M$ are the principal curvatures 
+
+  - They are the solutions to
+    $$
+    \lambda^{2}-\lambda\left(\sum I_{x}^{2}+\sum I_{y}^{2}\right)+\left(\sum I_{x}\right)^{2}\left(\sum I_{y}\right)^{2}-\left(\sum I_{x} I_{y}\right)^{2}=0
+    $$
+
+  <img src="https://raw.githubusercontent.com/redcxx/note-images/master/2022/05/upgit_20220519_1652980006.png" alt="image-20220519180645080" style="zoom:50%;" />
+
+  1. Compute $x$ and $y$ derivatives of image
+  $$
+  I_{x}=G_{\sigma}^{x} * I \quad I_{y}=G_{\sigma}^{y} * I
+  $$
+  2. Compute products of derivatives at every pixel
+  $$
+  I_{x 2}=I_{x} \cdot I_{x} \quad I_{y 2}=I_{y} \cdot I_{y} \quad I_{x y}=I_{x} \cdot I_{y}
+  $$
+  3. Compute the sums of the products of derivatives at each pixel
+  $$
+  S_{x 2}=G_{\sigma \prime} * I_{x 2} \quad S_{y 2}=G_{\sigma \prime} * I_{y 2} \quad S_{x y}=G_{\sigma \prime} * I_{x y}
+  $$
+  4. Define at each pixel $(x, y)$ the matrix
+  $$
+  H(x, y)=\left[\begin{array}{ll}
+  S_{x 2}(x, y) & S_{x y}(x, y) \\
+  S_{x y}(x, y) & S_{y 2}(x, y)
+  \end{array}\right]
+  $$
+  5. Compute the response of the detector at each pixel
+  $$
+  R=\operatorname{Det}(H)-k(\operatorname{Trace}(H))^{2}
+  $$
+  6. Threshold on value of $R$. Compute nonmax suppression.
+
+  
 
 ### Harris Matrix Eigenvalues
 
