@@ -554,6 +554,8 @@ How to reduce size of image:
 - A precursor to wavelet transform
 - First introduced for compression purposes
 
+Blur then down-sample, then blur then down-sample ...
+
 ### Blending
 
 > ??
@@ -584,8 +586,6 @@ How to reduce size of image:
        - Can be approximated by difference of two Gaussians (DoG)
   2. Find zero crossings
   3. Sensitive to noise.
-
-
 
 - Model Fitting
 
@@ -622,11 +622,24 @@ A feature extraction techniques used in image analysis, finding imperfect instan
 
 ### Auto Correlation
 
+- Moravec “Interest” Operator
+  1. Use a window surrounding each pixel as its own matching template 
+  2. Then tests local autocorrelation of the image: SSD
+     - Good matches in any direction: Flat image region
+     - Good matches in only one direction: Linear feature or edge
+     - No good matches in any direction: Distinctive point feature or Corner point
+  3. Set pixels that have an 8 neighbour with higher cornerness to zero.
+  4. Thresholding
+
+Its problem is that it have multiple responses at high interest points, weak response to blurred images and slow
+
+> TODO: search internet about moravec
+
 ### Harris Corner Detection
 
 - Gradient of different direction can be used to determine flat, edge and corners
 
-- Compute a second moment matrix
+- Compute a structured tensor
 
   - For axis align corner
     $$
@@ -672,18 +685,78 @@ A feature extraction techniques used in image analysis, finding imperfect instan
   \end{array}\right]
   $$
   5. Compute the response of the detector at each pixel
-  $$
-  R=\operatorname{Det}(H)-k(\operatorname{Trace}(H))^{2}
-  $$
-  6. Threshold on value of $R$. Compute nonmax suppression.
+     $$
+     R=\operatorname{Det}(H)-k(\operatorname{Trace}(H))^{2}
+     $$
+     
 
+     
+  $$
+  \begin{aligned}
+  &C=\operatorname{det}(S) / \operatorname{Tr}(S) \\
+  &C=\left(\left\langle I_{x}^{2}\right\rangle\left\langle I_{y}^{2}\right\rangle-\left\langle I_{x} I_{y}\right\rangle^{2}\right) /\left(\left\langle I_{x}^{2}\right\rangle+\left\langle I_{y}^{2}\right\rangle\right) \\
+  &C=\lambda_{1} \lambda_{2} /\left(\lambda_{1}+\lambda_{2}\right)
+  \end{aligned}
+  $$
+  - Usually $0<k<0.25$ for desired result: negative for edges, positive for corners
+  
+  6. Compute non-maximal suppression and Threshold on value of $R$. 
   
 
-### Harris Matrix Eigenvalues
+### SUSAN
+
+Method for edge and corner detection. No derivative, insensitive to noise.
+
+USAN is Univalue Segment Assimilating Nucleus. It computes the portion of the template's intensity difference with its center (nucleus).
+
+- Flat regions: USAN has similar area to the template
+- Edges: USAN area is about half the template area
+- Corners: USAN area is smaller than half the template area.
+- SUSAN = Smallest USAN
+
+There are some refinements to this method:
+
+- ‘Band’ edge orientation from USAN moments:
+  $$
+  \tan ^{-1}\left(\mu_{20} / \mu_{02}\right)
+  $$
+
+- Step edge orientation from centre of gravity.
+
+- Eliminate false positive corners using
+
+  - Distance of USAN centre of gravity from r0.
+  - Connectivity of USAN.
+
+- Non-maximal suppression
+
+### FAST
+
+Reuse nucleus concept.
+![img](https://upload.wikimedia.org/wikipedia/commons/thumb/4/47/FAST_Corner_Detector.jpg/220px-FAST_Corner_Detector.jpg)
+
+If a set of $N$ contiguous pixels in the circle are all brighter than the intensity of candidate pixel $p$ (denoted by $I_p$) plus a threshold value $t$ or all darker than the intensity of candidate pixel $p$ minus threshold value $t$, then $p$ is classified as corner.
+
+We can conduct a high speed test to reject a patch if 2 out of 4 pixels in 1,5,9,15 are all brighter or darker than the center pixel. This is because we need at least 12 contiguous pixels that are brighter or darker than the center pixel for it to be considered as corner.
+
+>  TODO: It is further improved by machine learning method 
 
 ### SIFT
 
-### Susan / FAST
+- Scale Invariant Feature Transform.
+- Detects “scale-space extrema”.
+- Highly stable features
+- Now widely used in computer vision.
+
+1. Scale-space extrema detection
+Search over multiple scales and image locations.
+2. Keypoint localization
+Fit a model to detrmine location and scale.
+Select keypoints based on a measure of stability.
+3. Orientation assignment
+Compute best orientation(s) for each keypoint region.
+4. Keypoint description
+Use local image gradients at selected scale and rotation to describe each keypoint region.
 
 ## Image Matching
 
