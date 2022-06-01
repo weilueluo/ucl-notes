@@ -69,8 +69,7 @@ def region_grow(im, visited, seed):
             visited(pixel) += 1
             for x, y in neighbors(pixel):
                 if visited((x, y)) == 0:
-                    queue.add((x, y))
-                
+                    queue.add((x, y))              
 ```
 
 - Issues
@@ -689,7 +688,7 @@ Its problem is that it have multiple responses at high interest points, weak res
      R=\operatorname{Det}(H)-k(\operatorname{Trace}(H))^{2}
      $$
      
-
+     
      
   $$
   \begin{aligned}
